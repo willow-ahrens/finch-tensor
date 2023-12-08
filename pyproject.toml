@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "finch-tensor"
+version = "0.1.0"
+description = ""
+authors = ["Willow Ahrens <willow.marie.ahrens@gmail.com>"]
+readme = "README.md"
+packages = [{include = "finch", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pyjulia = "^0.0.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
