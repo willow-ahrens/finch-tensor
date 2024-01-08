@@ -1,34 +1,25 @@
 import juliapkg
 juliapkg.add("Finch", "9177782c-1635-4eb9-9bfb-d9dfa25e6bce")
-import juliacall as Julia
-import os
-from Julia import Pkg
-#Pkg.activate(
-#    os.path.dirname(
-#        os.path.dirname(
-#            os.path.dirname(
-#                os.path.abspath(__file__)))))
-#Pkg.instantiate()
-from Julia import Finch
-from Julia import Base
-from Julia import Main
+import juliacall
+juliapkg.resolve()
+from juliacall import Main as jl
 
-_plus = Main.eval("Base.:+")
-_minus = Main.eval("Base.:-")
+_plus = jl.seval("Base.:+")
+_minus = jl.seval("Base.:-")
 
 class Tensor:
     def __init__(self, data):
         self.data = data
     def ndim(self):
-        return Base.ndims(self.data)
+        return jl.ndims(self.data)
     def dtype(self):
-        return Base.eltype(self.data)
+        return jl.eltype(self.data)
     def __pos__(self):
-        return Tensor(Base.broadcast(_plus, self.data))
+        return Tensor(jl.Base.broadcast(_plus, self.data))
     def __neg__(self):    
-        return Tensor(Base.broadcast(_minus, self.data))
+        return Tensor(jl.Base.broadcast(_minus, self.data))
     def __add__(self, other):
-        return Tensor(Base.broadcast(_plus, self.data, other.data))
+        return Tensor(jl.Base.broadcast(_plus, self.data, other.data))
 
 def fsprand(*args):
-    return Tensor(Finch.fsprand(*args))
+    return Tensor(jl.fsprand(*args))
