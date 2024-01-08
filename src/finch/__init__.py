@@ -1,15 +1,17 @@
-import julia
+import juliapkg
+juliapkg.add("Finch", "9177782c-1635-4eb9-9bfb-d9dfa25e6bce")
+import juliacall as Julia
 import os
-from julia import Pkg
-Pkg.activate(
-    os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.abspath(__file__)))))
-Pkg.instantiate()
-from julia import Finch
-from julia import Base
-from julia import Main
+from Julia import Pkg
+#Pkg.activate(
+#    os.path.dirname(
+#        os.path.dirname(
+#            os.path.dirname(
+#                os.path.abspath(__file__)))))
+#Pkg.instantiate()
+from Julia import Finch
+from Julia import Base
+from Julia import Main
 
 _plus = Main.eval("Base.:+")
 _minus = Main.eval("Base.:-")

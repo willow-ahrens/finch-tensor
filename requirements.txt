@@ -1,3 +1,9 @@
-julia==0.6.2 ; python_version >= "3.11" and python_version < "4.0" \
-    --hash=sha256:35eefc030671392b79ba0e1898b7103ed1286ad044783c4cadc99d4401c368e3 \
-    --hash=sha256:90752f71376fdb9919439d20496c2dab24486dfa4fe8a831d6dd14a1bcbc04d1
+juliacall==0.9.15 ; python_version >= "3.8" and python_version < "4.0" \
+    --hash=sha256:08163ae1290dda155cdabdccc4035a4cf0c8e361522a5b3f8e6532401b4f29cc \
+    --hash=sha256:b60e1225755455b8f0eff572cc7509b7220478e8b5e55b938c07321b8b0a7704
+juliapkg==0.1.10 ; python_version >= "3.8" and python_version < "4.0" \
+    --hash=sha256:70507318d51ac8663e856f56048764e49f5a0c4c90d81a3712d039a316369505 \
+    --hash=sha256:716a4e665bd3c9cc9321d45712d60ba624c50d64ec73b04a7f0ee962649c8f1b
+semantic-version==2.10.0 ; python_version >= "3.8" and python_version < "4.0" \
+    --hash=sha256:bdabb6d336998cbb378d4b9db3a4b56a1e3235701dc05ea2690d9a997ed5041c \
+    --hash=sha256:de78a3b8e0feda74cabc54aab2da702113e33ac9d9eb9d2389bcf1f58b7d9177

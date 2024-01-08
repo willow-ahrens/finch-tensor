@@ -1,14 +1,15 @@
 [tool.poetry]
 name = "finch-tensor"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["Willow Ahrens <willow.marie.ahrens@gmail.com>"]
 readme = "README.md"
 packages = [{include = "finch", from = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
-julia = "^0.6.2"
+python = "^3.8"
+juliacall = "^0.9.15"
+juliapkg = "^0.1.10"
 
 
 [tool.poetry.group.test.dependencies]

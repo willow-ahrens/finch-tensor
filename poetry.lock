@@ -12,6 +12,20 @@ files = [
 ]
 
 [[package]]
+name = "exceptiongroup"
+version = "1.2.0"
+description = "Backport of PEP 654 (exception groups)"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "exceptiongroup-1.2.0-py3-none-any.whl", hash = "sha256:4bfd3996ac73b41e9b9628b04e079f193850720ea5945fc96a08633c66912f14"},
+    {file = "exceptiongroup-1.2.0.tar.gz", hash = "sha256:91f5c769735f051a4290d52edd0858999b57e5876e9f85937691bd4c9fa3ed68"},
+]
+
+[package.extras]
+test = ["pytest (>=6)"]
+
+[[package]]
 name = "iniconfig"
 version = "2.0.0"
 description = "brain-dead simple config-ini parsing"
@@ -23,18 +37,32 @@ files = [
 ]
 
 [[package]]
-name = "julia"
-version = "0.6.2"
-description = "Julia/Python bridge with IPython support."
+name = "juliacall"
+version = "0.9.15"
+description = "Julia and Python in seamless harmony"
 optional = false
-python-versions = ">=3.4"
+python-versions = "~=3.7"
 files = [
-    {file = "julia-0.6.2-py2.py3-none-any.whl", hash = "sha256:90752f71376fdb9919439d20496c2dab24486dfa4fe8a831d6dd14a1bcbc04d1"},
-    {file = "julia-0.6.2.tar.gz", hash = "sha256:35eefc030671392b79ba0e1898b7103ed1286ad044783c4cadc99d4401c368e3"},
+    {file = "juliacall-0.9.15-py3-none-any.whl", hash = "sha256:b60e1225755455b8f0eff572cc7509b7220478e8b5e55b938c07321b8b0a7704"},
+    {file = "juliacall-0.9.15.tar.gz", hash = "sha256:08163ae1290dda155cdabdccc4035a4cf0c8e361522a5b3f8e6532401b4f29cc"},
 ]
 
-[package.extras]
-test = ["ipython", "mock", "numpy", "pytest (>=4.4)"]
+[package.dependencies]
+juliapkg = ">=0.1.8,<0.2.0"
+
+[[package]]
+name = "juliapkg"
+version = "0.1.10"
+description = "Julia version manager and package manager"
+optional = false
+python-versions = "*"
+files = [
+    {file = "juliapkg-0.1.10-py3-none-any.whl", hash = "sha256:716a4e665bd3c9cc9321d45712d60ba624c50d64ec73b04a7f0ee962649c8f1b"},
+    {file = "juliapkg-0.1.10.tar.gz", hash = "sha256:70507318d51ac8663e856f56048764e49f5a0c4c90d81a3712d039a316369505"},
+]
+
+[package.dependencies]
+semantic-version = ">=2.9,<3.0"
 
 [[package]]
 name = "packaging"
@@ -75,14 +103,42 @@ files = [
 
 [package.dependencies]
 colorama = {version = "*", markers = "sys_platform == \"win32\""}
+exceptiongroup = {version = ">=1.0.0rc8", markers = "python_version < \"3.11\""}
 iniconfig = "*"
 packaging = "*"
 pluggy = ">=0.12,<2.0"
+tomli = {version = ">=1.0.0", markers = "python_version < \"3.11\""}
 
 [package.extras]
 testing = ["argcomplete", "attrs (>=19.2.0)", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
 
+[[package]]
+name = "semantic-version"
+version = "2.10.0"
+description = "A library implementing the 'SemVer' scheme."
+optional = false
+python-versions = ">=2.7"
+files = [
+    {file = "semantic_version-2.10.0-py2.py3-none-any.whl", hash = "sha256:de78a3b8e0feda74cabc54aab2da702113e33ac9d9eb9d2389bcf1f58b7d9177"},
+    {file = "semantic_version-2.10.0.tar.gz", hash = "sha256:bdabb6d336998cbb378d4b9db3a4b56a1e3235701dc05ea2690d9a997ed5041c"},
+]
+
+[package.extras]
+dev = ["Django (>=1.11)", "check-manifest", "colorama (<=0.4.1)", "coverage", "flake8", "nose2", "readme-renderer (<25.0)", "tox", "wheel", "zest.releaser[recommended]"]
+doc = ["Sphinx", "sphinx-rtd-theme"]
+
+[[package]]
+name = "tomli"
+version = "2.0.1"
+description = "A lil' TOML parser"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
+    {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
+]
+
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.11"
-content-hash = "fcaa8364a7d790aca5580723b991ad0f174cfed4a010860141a8ef565248a62c"
+python-versions = "^3.8"
+content-hash = "233d6fdbe7506d032323e774fc0639d9ae0dc9fbbbc7fd2fcab9ed909a80549c"
