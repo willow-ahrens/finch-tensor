@@ -43,7 +43,7 @@ jobs:
           pip install -e .[tests]
       - name: Run tests
         run: |
-          pytest tests -vv
+          pytest --pyargs finch
       - uses: codecov/codecov-action@v3
         if: always()
       - name: Publish Unit Test Results
