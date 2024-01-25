@@ -35,7 +35,7 @@ jobs:
           allow-softlinks: true
           environment-file: .github/ci/environment.yml
           python-version: ${{ matrix.python }}
-          miniforge-variant: latest
+          miniforge-variant: Mambaforge
           use-only-tar-bz2: true
           use-mamba: true
       - name: Install package
