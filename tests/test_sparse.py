@@ -1,5 +1,5 @@
 import pytest
-import finch
+from src import finch
 
 @pytest.fixture
 def x():

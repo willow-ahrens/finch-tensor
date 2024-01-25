@@ -1,46 +1,21 @@
-[build-system]
-requires = ["setuptools>=64", "setuptools_scm>=8"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "finch-tensor"
-dynamic = ["version"]
+version = "0.1.3"
 description = ""
-maintainers = [{ name = "Willow Ahrens", email = "willow.marie.ahrens@gmail.com" }]
+authors = ["Willow Ahrens <willow.marie.ahrens@gmail.com>"]
 readme = "README.md"
-license = { file = "LICENSE" }
-requires-python = ">=3.8"
-dependencies = ["juliapkg>=0.1.10", "juliacall>=0.9.15"]
+packages = [{include = "finch", from = "src"}]
 
-[project.optional-dependencies]
-tests = ["pytest>=3.5", "sparse>=0.15.1"]
+[tool.poetry.dependencies]
+python = "^3.8"
+juliapkg = "^0.1.10"
+juliacall = "^0.9.15"
 
-[project.urls]
-Source = "https://github.com/willow-ahrens/finch-tensor"
-Repository = "https://github.com/willow-ahrens/finch-tensor.git"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["finch", "finch.*"]
+[tool.poetry.group.test.dependencies]
+pytest = "^7.4.4"
+pre-commit = "^3.6.0"
 
-[tool.setuptools_scm]
-version_file = "finch/_version.py"
-
-[tool.ruff]
-select = ["F", "E", "W", "I", "B", "UP", "YTT", "BLE", "C4", "T10", "ISC", "ICN", "PIE", "PYI", "RSE", "RET", "SIM", "PGH", "FLY", "NPY", "PERF"]
-exclude = ["finch/_version.py"]
-line-length = 120
-
-[tool.ruff.format]
-quote-style = "double"
-docstring-code-format = true
-
-[tool.ruff.lint.isort]
-section-order = [
-    "future",
-    "standard-library",
-    "first-party",
-    "third-party",
-    "numpy",
-    "local-folder",
-]
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
