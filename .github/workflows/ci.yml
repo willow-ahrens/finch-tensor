@@ -26,7 +26,7 @@ jobs:
           poetry install --with test
       - name: Run tests
         run: |
-          poetry run pytest --junit-xml=test-${{ matrix.os }}-Python${{ matrix.python }}.xml
+          poetry run pytest --junit-xml=test-${{ matrix.os }}-Python-${{ matrix.python }}.xml
       - uses: codecov/codecov-action@v3
         if: always()
       - name: Publish Unit Test Results
