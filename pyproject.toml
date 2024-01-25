@@ -13,7 +13,11 @@ requires-python = ">=3.8"
 dependencies = ["juliapkg>=0.1.10", "juliacall>=0.9.15"]
 
 [project.optional-dependencies]
-tests = ["pytest>=3.5", "sparse>=0.15.1"]
+tests = [
+    "pytest>=3.5",
+    "pytest-cov",
+    "sparse>=0.15.1",
+]
 
 [project.urls]
 Source = "https://github.com/willow-ahrens/finch-tensor"

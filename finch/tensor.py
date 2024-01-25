@@ -19,7 +19,7 @@ class Tensor(_Display):
             raise ValueError("For now only numpy input allowed")
 
         if lvl is not None and arr is not None and jl_data is None:
-            self._obj = jl.Tensor(lvl._obj, arr)
+            self._obj = jl.Tensor(lvl._obj, np.array(arr, order="F"))
         elif jl_data is not None:
             self._obj = jl_data
         else:
@@ -69,7 +69,8 @@ class Tensor(_Display):
         for _ in shape:
             dense_tensor = dense_tensor.lvl
 
-        return np.array(dense_tensor.val).reshape(shape, order="F")
+        result = np.array(dense_tensor.val).reshape(shape, order="F")
+        return np.array(result, order="C")
 
 
 class COO(Tensor):
@@ -97,8 +98,7 @@ class _Compressed2D(Tensor):
         indptr = jl.Vector(indptr + 1)
 
         lvl = jl.Element(fill_value, data)
-        jl_data = self.get_jl_data(shape, lvl, indptr, indices)
-        self._obj = jl.Tensor(jl_data)
+        self._obj = self.get_jl_data(shape, lvl, indptr, indices, fill_value)
 
     @abstractmethod
     def get_jl_data(
@@ -112,13 +112,39 @@ class _Compressed2D(Tensor):
 
 
 class CSC(_Compressed2D):
-    def get_jl_data(self, shape, lvl, indptr, indices):
-        return jl.Dense(jl.SparseList(lvl, shape[0], indptr, indices), shape[1])
+    def get_jl_data(self, shape, lvl, indptr, indices, fill_value):
+        return jl.Tensor(
+            jl.Dense(jl.SparseList(lvl, shape[0], indptr, indices), shape[1])
+        )
 
 
 class CSR(_Compressed2D):
-    def get_jl_data(self, shape, lvl, indptr, indices):
-        return jl.SparseList(jl.Dense(lvl, shape[0]), shape[1], indptr, indices)
+    def get_jl_data(self, shape, lvl, indptr, indices, fill_value):
+        swizzled = jl.swizzle(
+            jl.Tensor(jl.Dense(jl.SparseList(lvl, shape[0], indptr, indices), shape[1])), 2, 1
+        )
+        return jl.Tensor(jl.Dense(jl.SparseList(jl.Element(fill_value))), swizzled)
+
+
+class CSF(Tensor):
+    def __init__(self, arg, shape, fill_value=0.0):
+        assert isinstance(arg, tuple) and len(arg) == 3
+
+        data, indices_list, indptr_list = arg
+
+        assert len(indices_list) == len(shape) - 1
+        assert len(indptr_list) == len(shape) - 1
+
+        data = jl.Vector(data)
+        indices_list = [jl.Vector(i + 1) for i in indices_list]
+        indptr_list = [jl.Vector(i + 1) for i in indptr_list]
+
+        lvl = jl.Element(fill_value, data)
+        for size, indices, indptr in zip(shape[:-1], indices_list, indptr_list):
+            lvl = jl.SparseList(lvl, size, indptr, indices)
+
+        jl_data = jl.Dense(lvl, shape[-1])
+        self._obj = jl.Tensor(jl_data)
 
 
 def fsprand(*args):

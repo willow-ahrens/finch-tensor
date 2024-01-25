@@ -3,4 +3,4 @@ from .tensor import (
     RepeatRLE, SparseVBL, SparseCOO, SparseHash,
 )
 from .tensor import fsprand, jl
-from .tensor import COO, CSC, CSR
+from .tensor import COO, CSC, CSF, CSR

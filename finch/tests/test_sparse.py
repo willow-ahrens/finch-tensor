@@ -32,12 +32,13 @@ def test_wrappers():
     assert_equal(B_finch.todense(), B)
     assert_equal((B_finch * scalar + B_finch).todense(), B * 2 + B)
 
-
     levels = finch.Dense(finch.Dense(finch.Element(1.0)))
     B_finch = finch.Tensor(levels, A)
 
     assert_equal(B_finch.todense(), A)
     assert_equal((B_finch * scalar + B_finch).todense(), A * 2 + A)
+
+    assert not B_finch.todense().flags.f_contiguous
 
 
 def test_coo(rng):
@@ -55,29 +56,38 @@ def test_coo(rng):
     assert_equal(arr_finch.todense(), arr)
     assert_equal((arr_finch * scalar + arr_finch).todense(), arr * 2 + arr)
 
+    assert not arr_finch.todense().flags.f_contiguous
 
-def test_csc(rng):
+
+@pytest.mark.parametrize(
+    "classes", [(sparse._compressed.CSC, finch.CSC), (sparse._compressed.CSR, finch.CSR)]
+)
+def test_compressed2d(rng, classes):
+    sparse_class, finch_class = classes
     indices, indptr, data = np.arange(5), np.arange(6), rng.random(5)
     scalar = finch.Tensor(finch.Element(2), np.array(2))
 
-    arr_pydata = sparse._compressed.CSC((data, indices, indptr), shape=(5, 5))
+    arr_pydata = sparse_class((data, indices, indptr), shape=(5, 5))
     arr = arr_pydata.todense()
-    arr_finch = finch.CSC((data, indices, indptr), shape=(5, 5))
+    arr_finch = finch_class((data, indices, indptr), shape=(5, 5))
 
     assert_equal(arr_finch.todense(), arr)
     assert_equal((arr_finch * scalar + arr_finch).todense(), arr * 2 + arr)
 
+    assert not arr_finch.todense().flags.f_contiguous
 
-def test_csr(rng):
-    indices, indptr, data = np.arange(5), np.arange(6), rng.random(5)
+
+def test_csf():
+    arr = np.array([[[0, 1, 0, 0], [1, 0, 0, 3]], [[4, 0, -1, 0], [2, 2, 0, 0]], [[0, 0, 0, 0], [1, 5, 0, 3]]])
     scalar = finch.Tensor(finch.Element(2), np.array(2))
 
-    arr_pydata = sparse._compressed.CSR((data, indices, indptr), shape=(5, 5))
-    arr = arr_pydata.todense()
+    data = np.array([4, 1, 2, 1, 1, 2, 5, -1, 3, 3])
+    indices_list = [np.array([1, 0, 1, 2, 0, 1, 2, 1, 0, 2]), np.array([0, 1, 0, 1, 0, 1])]
+    indptr_list = [np.array([0, 1, 4, 5, 7, 8, 10]), np.array([0, 2, 4, 5, 6])]
 
-    data_finch = np.zeros(25)
-    data_finch[::6] = data
-    arr_finch = finch.CSR((data_finch, indices, np.array([0, 5])), shape=(5, 5))
+    arr_finch = finch.CSF((data, indices_list, indptr_list), shape=(3, 2, 4))
 
     assert_equal(arr_finch.todense(), arr)
     assert_equal((arr_finch * scalar + arr_finch).todense(), arr * 2 + arr)
+
+    assert not arr_finch.todense().flags.f_contiguous
