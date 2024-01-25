@@ -33,7 +33,7 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action/composite@v1
         if: always()
         with:
-          files: "test-*.xml"
+          files: "**/test-*.xml"
 on:
   # Trigger the workflow on push or pull request,
   # but only for the main branch
