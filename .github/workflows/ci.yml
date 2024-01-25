@@ -19,25 +19,6 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
-      - name: Cache conda
-        uses: actions/cache@v3
-        env:
-          # Increase this value to reset cache if ci/environment.yml has not changed
-          CACHE_NUMBER: 0
-        with:
-          path: ~/conda_pkgs_dir
-          key:
-            test-${{ matrix.os }}-conda-py${{ matrix.python }}-${{ env.CACHE_NUMBER }}-${{
-            hashFiles('.github/ci/environment.yml') }}
-      - uses: conda-incubator/setup-miniconda@v3
-        with:
-          activate-environment: finch-tensor-dev
-          allow-softlinks: true
-          environment-file: .github/ci/environment.yml
-          python-version: ${{ matrix.python }}
-          miniforge-variant: Mambaforge
-          use-only-tar-bz2: true
-          use-mamba: true
       - name: Install Poetry
         uses: snok/install-poetry@v1
       - name: Install package
