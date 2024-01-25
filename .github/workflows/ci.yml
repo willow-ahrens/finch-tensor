@@ -38,12 +38,14 @@ jobs:
           miniforge-variant: Mambaforge
           use-only-tar-bz2: true
           use-mamba: true
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
       - name: Install package
         run: |
-          pip install -e .[tests]
+          poetry install --with test
       - name: Run tests
         run: |
-          pytest --pyargs finch
+          poetry run pytest --pyargs finch
       - uses: codecov/codecov-action@v3
         if: always()
       - name: Publish Unit Test Results
