@@ -14,11 +14,12 @@ jobs:
             python: '3.9'
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    env:
-      PYTHON_VERSION: ${{ matrix.python }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
       - name: Install Poetry
         uses: snok/install-poetry@v1
       - name: Install package
