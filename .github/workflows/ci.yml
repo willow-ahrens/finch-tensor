@@ -45,7 +45,7 @@ jobs:
           poetry install --with test
       - name: Run tests
         run: |
-          poetry run pytest --pyargs finch
+          poetry run pytest
       - uses: codecov/codecov-action@v3
         if: always()
       - name: Publish Unit Test Results
