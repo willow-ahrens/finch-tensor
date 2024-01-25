@@ -29,7 +29,7 @@ jobs:
           key:
             test-${{ matrix.os }}-conda-py${{ matrix.python }}-${{ env.CACHE_NUMBER }}-${{
             hashFiles('.github/ci/environment.yml') }}
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: finch-tensor-dev
           allow-softlinks: true
