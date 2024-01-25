@@ -28,12 +28,12 @@ jobs:
           path: ~/conda_pkgs_dir
           key:
             test-${{ matrix.os }}-conda-py${{ matrix.python }}-${{ env.CACHE_NUMBER }}-${{
-            hashFiles('ci/environment.yml') }}
+            hashFiles('.github/ci/environment.yml') }}
       - uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: finch-tensor-dev
           allow-softlinks: true
-          environment-file: ci/environment.yml
+          environment-file: .github/ci/environment.yml
           python-version: ${{ matrix.python }}
           miniforge-variant: latest
           use-only-tar-bz2: true
