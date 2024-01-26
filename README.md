@@ -16,6 +16,19 @@ pip install finch
 
 Finch uses [poetry](https://python-poetry.org/) for packaging.
 
+To install for development, clone the repository and run:
+```bash
+poetry install --with test
+```
+to install the current project and dev dependencies.
+
+### Pre-commit hooks
+
+To add pre-commit hooks, run:
+```bash
+poetry run pre-commit install
+```
+
 ### Testing
 
 Finch uses [pytest](https://docs.pytest.org/en/latest/) for testing. To run the
