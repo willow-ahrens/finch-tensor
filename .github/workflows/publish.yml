@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
 jobs:
   build:
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -13,7 +14,7 @@ jobs:
       - name: Install dependencies
         run: pip install toml
       - name: Get version
-        run: echo "VERSION=$(python -c 'import toml; print(toml.load(\"pyproject.toml\")[\"tool\"][\"poetry\"][\"version\"])')" >> $GITHUB_ENV
+        run: echo "VERSION=$(python -c 'import toml; print(toml.load("pyproject.toml")["tool"]["poetry"]["version"])')" >> $GITHUB_ENV
       - name: Build and publish to pypi
         uses: JRubics/poetry-publish@v1.17
         with:
