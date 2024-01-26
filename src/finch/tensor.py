@@ -6,9 +6,11 @@ import juliacall as jc
 
 from .julia import jl
 
+
 class _Display:
     def __repr__(self):
         return jl.sprint(jl.show, self._obj)
+
     def __str__(self):
         return jl.sprint(jl.show, jl.MIME("text/plain"), self._obj)
 
@@ -121,7 +123,11 @@ class CSC(_Compressed2D):
 class CSR(_Compressed2D):
     def get_jl_data(self, shape, lvl, indptr, indices, fill_value):
         swizzled = jl.swizzle(
-            jl.Tensor(jl.Dense(jl.SparseList(lvl, shape[0], indptr, indices), shape[1])), 2, 1
+            jl.Tensor(
+                jl.Dense(jl.SparseList(lvl, shape[0], indptr, indices), shape[1])
+            ),
+            2,
+            1,
         )
         return jl.Tensor(jl.Dense(jl.SparseList(jl.Element(fill_value))), swizzled)
 
@@ -153,11 +159,13 @@ def fsprand(*args):
 
 # LEVELS
 
+
 class AbstractLevel(_Display):
     pass
 
 
 # core levels
+
 
 class Dense(AbstractLevel):
     def __init__(self, lvl):
@@ -175,6 +183,7 @@ class Pattern(AbstractLevel):
 
 
 # advanced levels
+
 
 class SparseList(AbstractLevel):
     def __init__(self, lvl):

@@ -1,5 +1,0 @@
-name: finch-tensor-dev
-channels:
-  - conda-forge
-dependencies:
-  - pip

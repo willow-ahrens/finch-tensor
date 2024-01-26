@@ -1,34 +1,39 @@
-# finch-tensor
+# Finch
 
 This is the beginnings of a sparse tensor library for Python, backed by the
 [Finch.jl](https://github.com/willow-ahrens/Finch.jl) tensor compiler.
 
 ## Installation
 
-`finch-tensor` is available on PyPi, and can be installed with pip:
+Finch is available on PyPi, and can be installed with pip:
 ```bash
-pip install finch-tensor
+pip install finch
 ```
 
 ## Contributing
 
-### Local setup
+### Packaging
 
-`conda` can be used for creating a local development setup:
+Finch uses [poetry](https://python-poetry.org/) for packaging.
 
+To install for development, clone the repository and run:
 ```bash
-git clone https://github.com/willow-ahrens/finch-tensor.git
-cd finch-tensor/
-conda create --name finch-tensor-dev python=3.9
-conda activate finch-tensor-dev
-pip install .
+poetry install --with test
+```
+to install the current project and dev dependencies.
+
+### Pre-commit hooks
+
+To add pre-commit hooks, run:
+```bash
+poetry run pre-commit install
 ```
 
 ### Testing
 
-`finch-tensor` uses [pytest](https://docs.pytest.org/en/latest/) for testing. To run the
+Finch uses [pytest](https://docs.pytest.org/en/latest/) for testing. To run the
 tests:
 
 ```bash
-pytest tests
+poetry run pytest
 ```
