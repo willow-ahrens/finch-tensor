@@ -17,9 +17,6 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
       - name: Install Poetry
         uses: snok/install-poetry@v1
       - name: Install package
@@ -29,7 +26,6 @@ jobs:
         run: |
           poetry run pytest --junit-xml=test-${{ matrix.os }}-Python-${{ matrix.python }}.xml
       - uses: codecov/codecov-action@v3
-        if: always()
 
 on:
   # Trigger the workflow on push or pull request,
