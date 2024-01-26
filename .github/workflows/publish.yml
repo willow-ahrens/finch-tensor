@@ -6,7 +6,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: pip install toml
+      - name: Get version
+        run: echo "VERSION=$(python -c 'import toml; print(toml.load(\"pyproject.toml\")[\"tool\"][\"poetry\"][\"version\"])')" >> $GITHUB_ENV
       - name: Build and publish to pypi
         uses: JRubics/poetry-publish@v1.17
         with:
           pypi_token: ${{ secrets.PYPI_TOKEN }}
+      - name: Create Release
+        uses: actions/create-release@v1
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.VERSION }}
+          release_name: Release v${{ env.VERSION }}
+          draft: false
+          prerelease: false
