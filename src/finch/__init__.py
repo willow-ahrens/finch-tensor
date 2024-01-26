@@ -10,7 +10,7 @@ from .tensor import (
     SparseCOO,
     SparseHash,
 )
-from .tensor import fsprand
+from .tensor import fsprand, permute_dims
 from .tensor import COO, CSC, CSF, CSR
 
 __all__ = [
@@ -25,6 +25,7 @@ __all__ = [
     "SparseCOO",
     "SparseHash",
     "fsprand",
+    "permute_dims",
     "COO",
     "CSC",
     "CSF",

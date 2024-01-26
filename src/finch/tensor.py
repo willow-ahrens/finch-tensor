@@ -46,33 +46,64 @@ class Tensor(_Display):
         return np.prod(self.shape)
 
     def __pos__(self):
-        return Tensor(jl_data=jl.Base.broadcast(jl.seval("+"), self._obj))
+        return Tensor(jl_data=jl.Base.broadcast(jl.seval("+"), self._get_obj()))
 
     def __add__(self, other):
-        return Tensor(jl_data=jl.Base.broadcast(jl.seval("+"), self._obj, other._obj))
+        return Tensor(jl_data=jl.Base.broadcast(jl.seval("+"), self._get_obj(), other._get_obj()))
 
     def __mul__(self, other):
-        return Tensor(jl_data=jl.Base.broadcast(jl.seval("*"), self._obj, other._obj))
+        return Tensor(jl_data=jl.Base.broadcast(jl.seval("*"), self._get_obj(), other._get_obj()))
 
     def __sub__(self, other):
-        return Tensor(jl_data=jl.Base.broadcast(jl.seval("-"), self._obj, other._obj))
+        return Tensor(jl_data=jl.Base.broadcast(jl.seval("-"), self._get_obj(), other._get_obj()))
 
     def __truediv__(self, other):
-        return Tensor(jl_data=jl.Base.broadcast(jl.seval("/"), self._obj, other._obj))
+        return Tensor(jl_data=jl.Base.broadcast(jl.seval("/"), self._get_obj(), other._get_obj()))
 
     def todense(self) -> np.ndarray:
-        shape = jl.size(self._obj)
+        obj = self._get_obj()
+        shape = jl.size(obj)
 
         # create fully dense array and access `val`
-        dense_lvls = jl.Element(jl.default(self._obj))
+        dense_lvls = jl.Element(jl.default(obj))
         for _ in shape:
             dense_lvls = jl.Dense(dense_lvls)
-        dense_tensor = jl.Tensor(dense_lvls, self._obj).lvl
+        dense_tensor = jl.Tensor(dense_lvls, obj).lvl
         for _ in shape:
             dense_tensor = dense_tensor.lvl
 
         result = np.array(dense_tensor.val).reshape(shape, order="F")
         return np.array(result, order="C")
+
+    def _get_obj(self) -> jc.AnyValue:
+        return self._get_materialized_obj() if self._is_swizzle() else self._obj
+
+    def _is_swizzle(self) -> bool:
+        return hasattr(self._obj, "body")
+
+    def _get_materialized_obj(self) -> "Tensor":
+        return jl.Tensor(self._get_lvl_description(), self._obj)
+
+    def _get_lvl_description(self) -> jc.AnyValue:
+        # TODO: move to the top of the file
+        lvls_dict = {"Dense": Dense, "Element": Element, "Pattern": Pattern, "SparseList": SparseList}
+
+        obj = self._obj
+        fill_value = jl.default(obj)
+        while hasattr(obj, "body"):
+            obj = obj.body
+        obj = obj.lvl
+
+        lvls = []
+        while not hasattr(obj, "val"):
+            name = str(obj).split("{")[0]
+            lvls.append(lvls_dict[name])
+            obj = obj.lvl
+
+        descr = Element(fill_value)
+        for lvl in lvls[::-1]:
+            descr = lvl(descr)
+        return descr._obj
 
 
 class COO(Tensor):
@@ -80,7 +111,7 @@ class COO(Tensor):
         assert coords.ndim == 2
         ndim = len(shape)
 
-        lvl = jl.Element(fill_value, jl.Vector(data))
+        lvl = jl.Element(data.dtype.type(fill_value), jl.Vector(data))
         ptr = jl.Vector[jl.Int]([1, len(data) + 1])
         tbl = tuple(jl.Vector(coords[i, :] + 1) for i in range(ndim))
 
@@ -95,12 +126,13 @@ class _Compressed2D(Tensor):
         assert len(shape) == 2
 
         data, indices, indptr = arg
+        dtype = data.dtype.type
         data = jl.Vector(data)
         indices = jl.Vector(indices + 1)
         indptr = jl.Vector(indptr + 1)
 
-        lvl = jl.Element(fill_value, data)
-        self._obj = self.get_jl_data(shape, lvl, indptr, indices, fill_value)
+        lvl = jl.Element(dtype(fill_value), data)
+        self._obj = self.get_jl_data(shape, lvl, indptr, indices)
 
     @abstractmethod
     def get_jl_data(
@@ -114,22 +146,21 @@ class _Compressed2D(Tensor):
 
 
 class CSC(_Compressed2D):
-    def get_jl_data(self, shape, lvl, indptr, indices, fill_value):
+    def get_jl_data(self, shape, lvl, indptr, indices):
         return jl.Tensor(
             jl.Dense(jl.SparseList(lvl, shape[0], indptr, indices), shape[1])
         )
 
 
 class CSR(_Compressed2D):
-    def get_jl_data(self, shape, lvl, indptr, indices, fill_value):
-        swizzled = jl.swizzle(
+    def get_jl_data(self, shape, lvl, indptr, indices):
+        return jl.swizzle(
             jl.Tensor(
                 jl.Dense(jl.SparseList(lvl, shape[0], indptr, indices), shape[1])
             ),
             2,
             1,
         )
-        return jl.Tensor(jl.Dense(jl.SparseList(jl.Element(fill_value))), swizzled)
 
 
 class CSF(Tensor):
@@ -137,6 +168,7 @@ class CSF(Tensor):
         assert isinstance(arg, tuple) and len(arg) == 3
 
         data, indices_list, indptr_list = arg
+        dtype = data.dtype.type
 
         assert len(indices_list) == len(shape) - 1
         assert len(indptr_list) == len(shape) - 1
@@ -145,7 +177,7 @@ class CSF(Tensor):
         indices_list = [jl.Vector(i + 1) for i in indices_list]
         indptr_list = [jl.Vector(i + 1) for i in indptr_list]
 
-        lvl = jl.Element(fill_value, data)
+        lvl = jl.Element(dtype(fill_value), data)
         for size, indices, indptr in zip(shape[:-1], indices_list, indptr_list):
             lvl = jl.SparseList(lvl, size, indptr, indices)
 
@@ -155,6 +187,11 @@ class CSF(Tensor):
 
 def fsprand(*args):
     return Tensor(jl_data=jl.fsprand(*args))
+
+
+def permute_dims(x: Tensor, axes: tuple[int, ...]):
+    axes = tuple(i + 1 for i in axes)
+    return Tensor(jl_data=jl.swizzle(x._obj, *axes))
 
 
 # LEVELS

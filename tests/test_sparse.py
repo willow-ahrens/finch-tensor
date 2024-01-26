@@ -17,28 +17,41 @@ def y():
 
 
 @pytest.fixture
+def arr3d():
+    return np.array(
+        [
+            [[0, 1, 0, 0], [1, 0, 0, 3]],
+            [[4, 0, -1, 0], [2, 2, 0, 0]],
+            [[0, 0, 0, 0], [1, 5, 0, 3]],
+        ]
+    )
+
+
+@pytest.fixture
 def rng():
     return np.random.default_rng(42)
 
 
-def test_wrappers():
-    A = np.array([[0, 0, 4], [1, 0, 0], [2, 0, 5], [3, 0, 0]])
-    B = np.stack([A, A], axis=2)
+@pytest.mark.parametrize("dtype", [np.int64, np.float64, np.complex128])
+def test_wrappers(dtype):
+    A = np.array([[0, 0, 4], [1, 0, 0], [2, 0, 5], [3, 0, 0]], dtype=dtype)
+    B = np.stack([A, A], axis=2, dtype=dtype)
     scalar = finch.Tensor(finch.Element(2), np.array(2))
 
-    levels = finch.Dense(finch.SparseList(finch.SparseList(finch.Element(0.0))))
+    levels = finch.Dense(finch.SparseList(finch.SparseList(finch.Element(dtype(0.0)))))
     B_finch = finch.Tensor(levels, B)
 
     assert_equal(B_finch.todense(), B)
     assert_equal((B_finch * scalar + B_finch).todense(), B * 2 + B)
 
-    levels = finch.Dense(finch.Dense(finch.Element(1.0)))
-    B_finch = finch.Tensor(levels, A)
+    levels = finch.Dense(finch.Dense(finch.Element(dtype(1.0))))
+    A_finch = finch.Tensor(levels, A)
 
-    assert_equal(B_finch.todense(), A)
-    assert_equal((B_finch * scalar + B_finch).todense(), A * 2 + A)
+    assert_equal(A_finch.todense(), A)
+    assert_equal((A_finch * scalar + A_finch).todense(), A * 2 + A)
 
-    assert not B_finch.todense().flags.f_contiguous
+    assert A_finch.todense().dtype == A.dtype and B_finch.todense().dtype == B.dtype
+    assert not A_finch.todense().flags.f_contiguous
 
 
 def test_coo(rng):
@@ -56,6 +69,7 @@ def test_coo(rng):
     assert_equal(arr_finch.todense(), arr)
     assert_equal((arr_finch * scalar + arr_finch).todense(), arr * 2 + arr)
 
+    assert arr_finch.todense().dtype == data.dtype
     assert not arr_finch.todense().flags.f_contiguous
 
 
@@ -75,17 +89,12 @@ def test_compressed2d(rng, classes):
     assert_equal(arr_finch.todense(), arr)
     assert_equal((arr_finch * scalar + arr_finch).todense(), arr * 2 + arr)
 
+    assert arr_finch.todense().dtype == data.dtype
     assert not arr_finch.todense().flags.f_contiguous
 
 
-def test_csf():
-    arr = np.array(
-        [
-            [[0, 1, 0, 0], [1, 0, 0, 3]],
-            [[4, 0, -1, 0], [2, 2, 0, 0]],
-            [[0, 0, 0, 0], [1, 5, 0, 3]],
-        ]
-    )
+def test_csf(arr3d):
+    arr = arr3d
     scalar = finch.Tensor(finch.Element(2), np.array(2))
 
     data = np.array([4, 1, 2, 1, 1, 2, 5, -1, 3, 3])
@@ -100,4 +109,29 @@ def test_csf():
     assert_equal(arr_finch.todense(), arr)
     assert_equal((arr_finch * scalar + arr_finch).todense(), arr * 2 + arr)
 
+    assert arr_finch.todense().dtype == data.dtype
     assert not arr_finch.todense().flags.f_contiguous
+
+
+@pytest.mark.parametrize(
+    "permutation", [(0, 1, 2), (2, 1, 0), (0, 2, 1), (1, 2, 0)]
+)
+def test_permute_dims(arr3d, permutation):
+    arr = arr3d
+
+    levels = finch.Dense(finch.SparseList(finch.SparseList(finch.Element(0))))
+    arr_finch = finch.Tensor(levels, arr)
+
+    actual = finch.permute_dims(arr_finch, permutation)
+    expected = np.transpose(arr, permutation)
+
+    assert actual._is_swizzle()
+    assert_equal(actual.todense(), expected)
+
+    actual = finch.permute_dims(actual, permutation)
+    expected = np.transpose(arr, permutation)
+
+    assert actual._is_swizzle()
+    assert_equal(actual.todense(), expected)
+
+    assert not (actual + arr_finch)._is_swizzle()
