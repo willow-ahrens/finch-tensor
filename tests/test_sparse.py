@@ -22,7 +22,7 @@ def rng():
 
 
 def test_wrappers():
-    A = np.array([[0,0,4], [1,0,0], [2,0,5], [3,0,0]])
+    A = np.array([[0, 0, 4], [1, 0, 0], [2, 0, 5], [3, 0, 0]])
     B = np.stack([A, A], axis=2)
     scalar = finch.Tensor(finch.Element(2), np.array(2))
 
@@ -60,7 +60,8 @@ def test_coo(rng):
 
 
 @pytest.mark.parametrize(
-    "classes", [(sparse._compressed.CSC, finch.CSC), (sparse._compressed.CSR, finch.CSR)]
+    "classes",
+    [(sparse._compressed.CSC, finch.CSC), (sparse._compressed.CSR, finch.CSR)],
 )
 def test_compressed2d(rng, classes):
     sparse_class, finch_class = classes
@@ -78,11 +79,20 @@ def test_compressed2d(rng, classes):
 
 
 def test_csf():
-    arr = np.array([[[0, 1, 0, 0], [1, 0, 0, 3]], [[4, 0, -1, 0], [2, 2, 0, 0]], [[0, 0, 0, 0], [1, 5, 0, 3]]])
+    arr = np.array(
+        [
+            [[0, 1, 0, 0], [1, 0, 0, 3]],
+            [[4, 0, -1, 0], [2, 2, 0, 0]],
+            [[0, 0, 0, 0], [1, 5, 0, 3]],
+        ]
+    )
     scalar = finch.Tensor(finch.Element(2), np.array(2))
 
     data = np.array([4, 1, 2, 1, 1, 2, 5, -1, 3, 3])
-    indices_list = [np.array([1, 0, 1, 2, 0, 1, 2, 1, 0, 2]), np.array([0, 1, 0, 1, 0, 1])]
+    indices_list = [
+        np.array([1, 0, 1, 2, 0, 1, 2, 1, 0, 2]),
+        np.array([0, 1, 0, 1, 0, 1]),
+    ]
     indptr_list = [np.array([0, 1, 4, 5, 7, 8, 10]), np.array([0, 2, 4, 5, 6])]
 
     arr_finch = finch.CSF((data, indices_list, indptr_list), shape=(3, 2, 4))
