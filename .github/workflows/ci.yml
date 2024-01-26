@@ -30,11 +30,7 @@ jobs:
           poetry run pytest --junit-xml=test-${{ matrix.os }}-Python-${{ matrix.python }}.xml
       - uses: codecov/codecov-action@v3
         if: always()
-      - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action/composite@v1
-        if: always()
-        with:
-          files: "**/test-*.xml"
+
 on:
   # Trigger the workflow on push or pull request,
   # but only for the main branch
