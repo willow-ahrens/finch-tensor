@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Tuple
+from typing import Union
 
 import numpy as np
 import juliacall as jc
@@ -16,18 +16,76 @@ class _Display:
 
 
 class Tensor(_Display):
-    def __init__(self, lvl=None, arr=None, jl_data=None):
-        if arr is not None and not isinstance(arr, np.ndarray):
-            raise ValueError("For now only numpy input allowed")
+    """
+    A wrapper class for Finch.Tensor and Finch.SwizzleArray.
 
+    Two constructors are supported: `lvl`+`arr`, or `jl_data`.
+
+    Parameters
+    ----------
+    lvl : AbstractLevel, optional
+        Levels description.
+    arr : ndarray, optional
+        NumPy array that should fill `lvl`.
+    jl_data : Finch.SwizzleArray, optional
+        Raw Julia object.
+    order : str or tuple[int, ...], optional
+        Order of the tensor. The order numbers the dimensions from the fastest to slowest.
+        The leaf nodes have mode `0` and the root node has mode `n-1`. If the tensor was square
+        of size `N`, then `N .^ order == strides`. Available options are "C" (row-major),
+        "F" (column-major), or a custom order. Default: row-major.
+
+    Returns
+    -------
+    Tensor
+        Python wrapper for Finch Tensor.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import finch
+    >>> x = finch.Tensor(lvl=finch.Dense(finch.Element(0)), arr=np.arange(3))
+    >>> x.todense()
+    array([0, 1, 2])
+    """
+    row_major = "C"
+    column_major = "F"
+
+    def __init__(self, lvl=None, arr=None, jl_data=None, order=None):
+        if arr is not None and not isinstance(arr, np.ndarray):
+            raise ValueError("For now only numpy input allowed.")
+
+        # constructor for levels description and NumPy array input
         if lvl is not None and arr is not None and jl_data is None:
-            self._obj = jl.Tensor(lvl._obj, np.array(arr, order="F"))
-        elif jl_data is not None:
+            order = self.preprocess_order(order, arr.ndim)
+            inv_order = tuple(i - 1 for i in jl.invperm(order))
+            self._obj = jl.swizzle(jl.Tensor(lvl._obj, arr.transpose(inv_order)), *order)
+        # constructor for a raw julia object
+        elif jl_data is not None and lvl is None and arr is None:
+            if order is not None:
+                raise ValueError("When passing a julia object order can't be provided.")
+            if not jl.isa(jl_data, jl.Finch.SwizzleArray):
+                raise ValueError("`jl_data` must be a SwizzleArray.")
             self._obj = jl_data
         else:
             raise ValueError(
-                "either `lvl` and numpy `arr` should be provided or a raw julia object."
+                "Either `lvl` and numpy `arr` should be provided or a raw julia object."
             )
+
+    def __pos__(self):
+        return Tensor(jl_data=jl.Base.broadcast(jl.seval("+"), self._obj))
+
+    def __add__(self, other):
+        return Tensor(jl_data=jl.Base.broadcast(jl.seval("+"), self._obj, other._obj))
+
+    def __mul__(self, other):
+        return Tensor(jl_data=jl.Base.broadcast(jl.seval("*"), self._obj, other._obj))
+
+    def __sub__(self, other):
+        return Tensor(jl_data=jl.Base.broadcast(jl.seval("-"), self._obj, other._obj))
+
+    def __truediv__(self, other):
+        return Tensor(jl_data=jl.Base.broadcast(jl.seval("/"), self._obj, other._obj))
 
     @property
     def dtype(self) -> jc.TypeValue:
@@ -38,72 +96,87 @@ class Tensor(_Display):
         return jl.ndims(self._obj)
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> tuple[int, ...]:
         return jl.size(self._obj)
 
     @property
     def size(self) -> int:
         return np.prod(self.shape)
 
-    def __pos__(self):
-        return Tensor(jl_data=jl.Base.broadcast(jl.seval("+"), self._get_obj()))
+    @property
+    def _is_dense(self) -> bool:
+        lvl = self._obj.body.lvl
+        for _ in self.shape:
+            if not jl.isa(self._obj, jl.Finch.Dense):
+                return False
+            lvl = lvl.lvl
+        return True
 
-    def __add__(self, other):
-        return Tensor(jl_data=jl.Base.broadcast(jl.seval("+"), self._get_obj(), other._get_obj()))
+    @property
+    def _order(self) -> tuple[int, ...]:
+        return jl.typeof(self._obj).parameters[1]
 
-    def __mul__(self, other):
-        return Tensor(jl_data=jl.Base.broadcast(jl.seval("*"), self._get_obj(), other._get_obj()))
+    @classmethod
+    def preprocess_order(
+        cls, order: Union[str, tuple[int, ...], None], ndim: int
+    ) -> tuple[int, ...]:
+        if order == cls.column_major:
+            permutation = tuple(range(1, ndim + 1))
+        elif order == cls.row_major or order is None:
+            permutation = tuple(range(1, ndim + 1)[::-1])
+        elif isinstance(order, tuple):
+            if min(order) == 0:
+                order = tuple(i + 1 for i in order)
+            if (
+                len(order) == ndim and
+                all([i in order for i in range(1, ndim + 1)])
+            ):
+                permutation = order
+            else:
+                raise ValueError(f"Custom order is not a permutation: {order}.")
+        else:
+            raise ValueError(f"order must be 'C', 'F' or a tuple, but is: {type(order)}.")
 
-    def __sub__(self, other):
-        return Tensor(jl_data=jl.Base.broadcast(jl.seval("-"), self._get_obj(), other._get_obj()))
+        return permutation
 
-    def __truediv__(self, other):
-        return Tensor(jl_data=jl.Base.broadcast(jl.seval("/"), self._get_obj(), other._get_obj()))
+    def get_order(self, zero_indexing=True) -> tuple[int, ...]:
+        order = self._order
+        if zero_indexing:
+            order = tuple(i - 1 for i in order)
+        return order
+
+    def get_inv_order(self, zero_indexing=True) -> tuple[int, ...]:
+        inv_order = jl.invperm(self._order)
+        if zero_indexing:
+            inv_order = tuple(i - 1 for i in inv_order)
+        return inv_order
 
     def todense(self) -> np.ndarray:
-        obj = self._get_obj()
-        shape = jl.size(obj)
+        obj = self._obj
 
-        # create fully dense array and access `val`
-        dense_lvls = jl.Element(jl.default(obj))
-        for _ in shape:
-            dense_lvls = jl.Dense(dense_lvls)
-        dense_tensor = jl.Tensor(dense_lvls, obj).lvl
-        for _ in shape:
+        if self._is_dense:
+            # don't materialize a dense finch tensor
+            shape = jl.size(obj.body)
+            dense_tensor = obj.body.lvl
+        else:
+            # create materialized dense array
+            shape = jl.size(obj)
+            dense_lvls = jl.Element(jl.default(obj))
+            for _ in range(self.ndim):
+                dense_lvls = jl.Dense(dense_lvls)
+            dense_tensor = jl.Tensor(dense_lvls, obj).lvl  # materialize
+
+        for _ in range(self.ndim):
             dense_tensor = dense_tensor.lvl
 
-        result = np.array(dense_tensor.val).reshape(shape, order="F")
-        return np.array(result, order="C")
+        result = np.asarray(jl.reshape(dense_tensor.val, shape))
+        return result.transpose(self.get_inv_order()) if self._is_dense else result
 
-    def _get_obj(self) -> jc.AnyValue:
-        return self._get_materialized_obj() if self._is_swizzle() else self._obj
-
-    def _is_swizzle(self) -> bool:
-        return hasattr(self._obj, "body")
-
-    def _get_materialized_obj(self) -> "Tensor":
-        return jl.Tensor(self._get_lvl_description(), self._obj)
-
-    def _get_lvl_description(self) -> jc.AnyValue:
-        # TODO: move to the top of the file
-        lvls_dict = {"Dense": Dense, "Element": Element, "Pattern": Pattern, "SparseList": SparseList}
-
-        obj = self._obj
-        fill_value = jl.default(obj)
-        while hasattr(obj, "body"):
-            obj = obj.body
-        obj = obj.lvl
-
-        lvls = []
-        while not hasattr(obj, "val"):
-            name = str(obj).split("{")[0]
-            lvls.append(lvls_dict[name])
-            obj = obj.lvl
-
-        descr = Element(fill_value)
-        for lvl in lvls[::-1]:
-            descr = lvl(descr)
-        return descr._obj
+    def permute_dims(self, axes: tuple[int, ...]) -> "Tensor":
+        axes = tuple(i + 1 for i in axes)
+        new_obj = jl.swizzle(self._obj, *axes)
+        new_tensor = Tensor(jl_data=new_obj)
+        return new_tensor
 
 
 class COO(Tensor):
@@ -116,12 +189,13 @@ class COO(Tensor):
         tbl = tuple(jl.Vector(coords[i, :] + 1) for i in range(ndim))
 
         jl_data = jl.SparseCOO[ndim](lvl, shape, ptr, tbl)
+        jl_data = jl.swizzle(jl.Tensor(jl_data), 1, 2)
 
-        self._obj = jl.Tensor(jl_data)
+        super().__init__(jl_data=jl_data)
 
 
 class _Compressed2D(Tensor):
-    def __init__(self, arg, shape, fill_value=0.0):
+    def __init__(self, arg, shape, fill_value=0.0, order=Tensor.row_major):
         assert isinstance(arg, tuple) and len(arg) == 3
         assert len(shape) == 2
 
@@ -132,35 +206,28 @@ class _Compressed2D(Tensor):
         indptr = jl.Vector(indptr + 1)
 
         lvl = jl.Element(dtype(fill_value), data)
-        self._obj = self.get_jl_data(shape, lvl, indptr, indices)
+        jl_data = jl.swizzle(
+            jl.Tensor(
+                jl.Dense(jl.SparseList(lvl, shape[0], indptr, indices), shape[1])
+            ),
+            *self.get_permutation(order),
+        )
+
+        super().__init__(jl_data=jl_data)
 
     @abstractmethod
-    def get_jl_data(
-        self,
-        shape: Tuple[int, int],
-        lvl: jc.AnyValue,
-        indptr: jc.VectorValue,
-        indices: jc.VectorValue,
-    ) -> jc.AnyValue:
+    def get_permutation(self, order: str) -> tuple[int, int]:
         ...
 
 
 class CSC(_Compressed2D):
-    def get_jl_data(self, shape, lvl, indptr, indices):
-        return jl.Tensor(
-            jl.Dense(jl.SparseList(lvl, shape[0], indptr, indices), shape[1])
-        )
+    def get_permutation(self, order: str) -> tuple[int, int]:
+        return (2, 1) if order == Tensor.row_major else (1, 2)
 
 
 class CSR(_Compressed2D):
-    def get_jl_data(self, shape, lvl, indptr, indices):
-        return jl.swizzle(
-            jl.Tensor(
-                jl.Dense(jl.SparseList(lvl, shape[0], indptr, indices), shape[1])
-            ),
-            2,
-            1,
-        )
+    def get_permutation(self, order: str) -> tuple[int, int]:
+        return (1, 2) if order == Tensor.row_major else (2, 1)
 
 
 class CSF(Tensor):
@@ -181,17 +248,17 @@ class CSF(Tensor):
         for size, indices, indptr in zip(shape[:-1], indices_list, indptr_list):
             lvl = jl.SparseList(lvl, size, indptr, indices)
 
-        jl_data = jl.Dense(lvl, shape[-1])
-        self._obj = jl.Tensor(jl_data)
+        jl_data = jl.swizzle(jl.Tensor(jl.Dense(lvl, shape[-1])), *range(1, len(shape) + 1))
+
+        super().__init__(jl_data=jl_data)
 
 
-def fsprand(*args):
-    return Tensor(jl_data=jl.fsprand(*args))
+def fsprand(*args, order=None):
+    return Tensor(jl_data=jl.fsprand(*args), order=order)
 
 
 def permute_dims(x: Tensor, axes: tuple[int, ...]):
-    axes = tuple(i + 1 for i in axes)
-    return Tensor(jl_data=jl.swizzle(x._obj, *axes))
+    return x.permute_dims(axes)
 
 
 # LEVELS
@@ -205,13 +272,19 @@ class AbstractLevel(_Display):
 
 
 class Dense(AbstractLevel):
-    def __init__(self, lvl):
-        self._obj = jl.Dense(lvl._obj)
+    def __init__(self, lvl, shape=None):
+        args = [lvl._obj]
+        if shape is not None:
+            args.append(shape)
+        self._obj = jl.Dense(*args)
 
 
 class Element(AbstractLevel):
-    def __init__(self, val):
-        self._obj = jl.Element(val)
+    def __init__(self, fill_value, data=None):
+        args = [fill_value]
+        if data is not None:
+            args.append(data)
+        self._obj = jl.Element(*args)
 
 
 class Pattern(AbstractLevel):
