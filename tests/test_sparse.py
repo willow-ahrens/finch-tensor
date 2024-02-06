@@ -44,17 +44,28 @@ def test_wrappers(dtype, order):
     assert A_finch.todense().dtype == A.dtype and B_finch.todense().dtype == B.dtype
 
 
-@pytest.mark.skip(reason="a copy is made")
-@pytest.mark.parametrize("dtype", [np.int64])
+@pytest.mark.parametrize("dtype", [np.int64, np.float64, np.complex128])
 @pytest.mark.parametrize("order", ["C", "F"])
 def test_no_copy_fully_dense(dtype, order, arr3d):
+    arr = np.array(arr3d, dtype=dtype, order=order)
+    arr_in = arr.transpose(None) if order == "F" else arr
+    arr_shape = arr_in.shape
 
-    levels = finch.Dense(finch.Dense(finch.Dense(finch.Element(dtype(0.0)))))
-    arr_finch = finch.Tensor(levels, arr3d, order=order)
-
+    levels = finch.Dense(
+        finch.Dense(
+            finch.Dense(
+                finch.Element(dtype(0.0), arr_in.reshape(-1)),
+                arr_shape[2]
+            ),
+            arr_shape[1]
+        ),
+        arr_shape[0]
+    )
+    arr_finch = finch.Tensor(lvl=levels, order=order)
     arr_todense = arr_finch.todense()
 
-    assert np.shares_memory(arr3d, arr_todense)
+    assert_equal(arr_todense, arr)
+    assert np.shares_memory(arr_todense, arr)
 
 
 def test_coo(rng):

@@ -19,14 +19,16 @@ class Tensor(_Display):
     """
     A wrapper class for Finch.Tensor and Finch.SwizzleArray.
 
-    Two constructors are supported: `lvl`+`arr`, or `jl_data`.
+    Three constructors are supported: `lvl` with data, `lvl` with description + `arr`, or `jl_data`.
 
     Parameters
     ----------
     lvl : AbstractLevel, optional
-        Levels description.
+        Levels' description or levels with data. When level's description is passed then
+        `arr` parameter is required. A zero-copy fully dense tensor semantics is available
+        with levels with data constructor (see Examples section).
     arr : ndarray, optional
-        NumPy array that should fill `lvl`.
+        NumPy array that should fill `lvl`. If provided `lvl` should only describe levels.
     jl_data : Finch.SwizzleArray, optional
         Raw Julia object.
     order : str or tuple[int, ...], optional
@@ -44,9 +46,15 @@ class Tensor(_Display):
     --------
     >>> import numpy as np
     >>> import finch
-    >>> x = finch.Tensor(lvl=finch.Dense(finch.Element(0)), arr=np.arange(3))
-    >>> x.todense()
+    >>> t1 = finch.Tensor(lvl=finch.Dense(finch.Element(0)), arr=np.arange(3))
+    >>> t1.todense()
     array([0, 1, 2])
+    >>> # no-copy dense constructor
+    >>> arr2d = np.ones((3, 4))
+    >>> levels = finch.Dense(finch.Dense(finch.Element(1, arr2d.ravel()), 4), 3)
+    >>> t2 = finch.Tensor(lvl=levels)
+    >>> np.shares_memory(t2.todense(), arr2d)
+    True
     """
     row_major = "C"
     column_major = "F"
@@ -56,10 +64,14 @@ class Tensor(_Display):
             raise ValueError("For now only numpy input allowed.")
 
         # constructor for levels description and NumPy array input
-        if lvl is not None and arr is not None and jl_data is None:
-            order = self.preprocess_order(order, arr.ndim)
-            inv_order = tuple(i - 1 for i in jl.invperm(order))
-            self._obj = jl.swizzle(jl.Tensor(lvl._obj, arr.transpose(inv_order)), *order)
+        if lvl is not None and jl_data is None:
+            if arr is not None:
+                order = self.preprocess_order(order, arr.ndim)
+                inv_order = tuple(i - 1 for i in jl.invperm(order))
+                self._obj = jl.swizzle(jl.Tensor(lvl._obj, arr.transpose(inv_order)), *order)
+            else:
+                order = self.preprocess_order(order, self.get_lvl_ndim(lvl._obj))
+                self._obj = jl.swizzle(jl.Tensor(lvl._obj), *order)
         # constructor for a raw julia object
         elif jl_data is not None and lvl is None and arr is None:
             if order is not None:
@@ -107,7 +119,7 @@ class Tensor(_Display):
     def _is_dense(self) -> bool:
         lvl = self._obj.body.lvl
         for _ in self.shape:
-            if not jl.isa(self._obj, jl.Finch.Dense):
+            if not jl.isa(lvl, jl.Finch.Dense):
                 return False
             lvl = lvl.lvl
         return True
@@ -138,6 +150,16 @@ class Tensor(_Display):
             raise ValueError(f"order must be 'C', 'F' or a tuple, but is: {type(order)}.")
 
         return permutation
+
+    @classmethod
+    def get_lvl_ndim(cls, lvl) -> int:
+        ndim = 0
+        for _ in range(np.MAXDIMS):
+            ndim += 1
+            lvl = lvl.lvl
+            if jl.isa(lvl, jl.Finch.Element):
+                break
+        return ndim
 
     def get_order(self, zero_indexing=True) -> tuple[int, ...]:
         order = self._order
