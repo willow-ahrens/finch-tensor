@@ -3,6 +3,7 @@ from typing import Union
 
 import numpy as np
 import juliacall as jc
+import scipy.sparse as sp
 
 from .julia import jl
 
@@ -180,18 +181,26 @@ class Tensor(_Display):
 
 
 class COO(Tensor):
-    def __init__(self, coords, data, shape, fill_value=0.0):
-        assert coords.ndim == 2
+    def __init__(self, coords, data, shape, fill_value=0.0, order=Tensor.column_major):
+        assert len(coords) == 2
         ndim = len(shape)
+        order = self.preprocess_order(order, ndim)
 
         lvl = jl.Element(data.dtype.type(fill_value), jl.Vector(data))
         ptr = jl.Vector[jl.Int]([1, len(data) + 1])
-        tbl = tuple(jl.Vector(coords[i, :] + 1) for i in range(ndim))
+        tbl = tuple(jl.Vector(arr + 1) for arr in coords)
 
         jl_data = jl.SparseCOO[ndim](lvl, shape, ptr, tbl)
-        jl_data = jl.swizzle(jl.Tensor(jl_data), 1, 2)
+        jl_data = jl.swizzle(jl.Tensor(jl_data), *order)
 
         super().__init__(jl_data=jl_data)
+
+    @classmethod
+    def from_scipy_sparse(cls, x):
+        if not isinstance(x, sp.coo_matrix):
+            raise ValueError(f"Input must be a scipy coo matrix, but it's: {type(x)}")
+
+        return cls(coords=(x.col, x.row), data=x.data, shape=x.shape[::-1], order=cls.row_major)
 
 
 class _Compressed2D(Tensor):
@@ -219,15 +228,57 @@ class _Compressed2D(Tensor):
     def get_permutation(self, order: str) -> tuple[int, int]:
         ...
 
+    @classmethod
+    @abstractmethod
+    def get_scipy_class(cls) -> Union[sp.csc_matrix, sp.csr_matrix]:
+        ...
+
+    @classmethod
+    @abstractmethod
+    def preprocess_scipy_shape(cls, shape: tuple[int, int]) -> tuple[int, int]:
+        ...
+
+    @classmethod
+    def from_scipy_sparse(cls, x):
+        scipy_class = cls.get_scipy_class()
+        if not isinstance(x, scipy_class):
+            raise ValueError(f"Input must be a {scipy_class} but it's: {type(x)}")
+
+        indices = np.array(x.indices, dtype=x.data.dtype)
+        indptr = np.array(x.indptr, dtype=x.data.dtype)
+        return cls(
+            arg=(x.data, indices, indptr),
+            shape=cls.preprocess_scipy_shape(x.shape),
+            order=cls.column_major,
+        )
+
 
 class CSC(_Compressed2D):
     def get_permutation(self, order: str) -> tuple[int, int]:
         return (2, 1) if order == Tensor.row_major else (1, 2)
 
+    @classmethod
+    def get_scipy_class(cls) -> Union[sp.csc_matrix, sp.csr_matrix]:
+        return sp.csc_matrix
+
+    @classmethod
+    @abstractmethod
+    def preprocess_scipy_shape(cls, shape: tuple[int, int]) -> tuple[int, int]:
+        return shape
+
 
 class CSR(_Compressed2D):
     def get_permutation(self, order: str) -> tuple[int, int]:
         return (1, 2) if order == Tensor.row_major else (2, 1)
+
+    @classmethod
+    def get_scipy_class(cls) -> Union[sp.csc_matrix, sp.csr_matrix]:
+        return sp.csr_matrix
+
+    @classmethod
+    @abstractmethod
+    def preprocess_scipy_shape(cls, shape: tuple[int, int]) -> tuple[int, int]:
+        return shape[::-1]
 
 
 class CSF(Tensor):

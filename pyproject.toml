@@ -11,6 +11,7 @@ python = "^3.9"
 juliapkg = "^0.1.10"
 juliacall = "^0.9.15"
 numpy = "^1.19"
+scipy = "^1.7"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.4.4"

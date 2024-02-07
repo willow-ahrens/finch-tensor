@@ -58,14 +58,14 @@ def test_no_copy_fully_dense(dtype, order, arr3d):
 
 
 def test_coo(rng):
-    coords = np.asarray(
-        [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]],
-        dtype=np.intp,
+    coords = (
+        np.asarray([0, 1, 2, 3, 4], dtype=np.intp),
+        np.asarray([0, 1, 2, 3, 4], dtype=np.intp),
     )
     data = rng.random(5)
     scalar = finch.Tensor(finch.Element(2), np.array(2))
 
-    arr_pydata = sparse.COO(coords, data, shape=(5, 5))
+    arr_pydata = sparse.COO(np.vstack(coords), data, shape=(5, 5))
     arr = arr_pydata.todense()
     arr_finch = finch.COO(coords, data, shape=(5, 5))
 
