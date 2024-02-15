@@ -1,5 +1,4 @@
-from .tensor import (
-    Tensor,
+from .levels import (
     Dense,
     Element,
     Pattern,
@@ -9,9 +8,14 @@ from .tensor import (
     SparseVBL,
     SparseCOO,
     SparseHash,
+    Storage,
+    DenseStorage,
 )
-from .tensor import fsprand, permute_dims
-from .tensor import COO, CSC, CSF, CSR
+from .tensor import (
+    Tensor,
+    fsprand,
+    permute_dims,
+)
 
 __all__ = [
     "Tensor",
@@ -24,10 +28,8 @@ __all__ = [
     "SparseVBL",
     "SparseCOO",
     "SparseHash",
+    "Storage",
+    "DenseStorage",
     "fsprand",
     "permute_dims",
-    "COO",
-    "CSC",
-    "CSF",
-    "CSR",
 ]
