@@ -6,17 +6,6 @@ import scipy.sparse as sp
 import finch
 
 
-@pytest.fixture
-def arr2d():
-    return np.array(
-        [
-            [0, 0, 3, 2, 0],
-            [1, 0, 0, 1, 0],
-            [0, 5, 0, 0, 0],
-        ]
-    )
-
-
 def test_scipy_coo(arr2d):
     sp_arr = sp.coo_matrix(arr2d, dtype=np.int64)
     finch_arr = finch.Tensor(sp_arr)
