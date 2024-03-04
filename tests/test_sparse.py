@@ -6,22 +6,6 @@ import sparse
 import finch
 
 
-@pytest.fixture
-def arr3d():
-    return np.array(
-        [
-            [[0, 1, 0, 0], [1, 0, 0, 3]],
-            [[4, 0, -1, 0], [2, 2, 0, 0]],
-            [[0, 0, 0, 0], [1, 5, 0, 3]],
-        ]
-    )
-
-
-@pytest.fixture
-def rng():
-    return np.random.default_rng(42)
-
-
 @pytest.mark.parametrize("dtype", [np.int64, np.float64, np.complex128])
 @pytest.mark.parametrize("order", ["C", "F", None])
 def test_wrappers(dtype, order):

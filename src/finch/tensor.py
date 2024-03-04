@@ -1,6 +1,7 @@
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
+from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
 
 from .julia import jl
 from .levels import _Display, Dense, Element, Storage
@@ -96,6 +97,21 @@ class Tensor(_Display):
 
     def __truediv__(self, other):
         return Tensor(jl.Base.broadcast(jl.seval("/"), self._obj, other._obj))
+
+    def __getitem__(self, key):
+        if not isinstance(key, tuple):
+            key = (key,)
+        key = _expand_ellipsis(key, self.shape)
+        key = _add_missing_dims(key, self.shape)
+        key = _add_plus_one(key, self.shape)
+
+        result = self._obj[key]
+        if jl.isa(result, jl.Finch.SwizzleArray):
+            return Tensor(result)
+        elif jl.isa(result, jl.Finch.Tensor):
+            return Tensor(jl.swizzle(result, *range(1, jl.ndims(result) + 1)))
+        else:
+            return result
 
     @property
     def dtype(self) -> np.dtype:
@@ -347,3 +363,73 @@ def astype(x: Tensor, dtype: jl.DataType, /, *, copy: bool = True):
 
 def _is_scipy_sparse_obj(x):
     return hasattr(x, "__module__") and x.__module__.startswith("scipy.sparse")
+
+
+def _slice_plus_one(s: slice, size: int) -> range:
+    step = s.step if s.step is not None else 1
+    start_default = size if step < 0 else 1
+    stop_default = 1 if step < 0 else size
+
+    if s.start is not None:
+        start = normalize_axis_index(s.start, size) + 1 if s.start < size else size
+    else:
+        start = start_default
+
+    if s.stop is not None:
+        stop_offset = 2 if step < 0 else 0
+        stop = normalize_axis_index(s.stop, size) + stop_offset if s.stop < size else size
+    else:
+        stop = stop_default
+
+    return jl.range(start=start, step=step, stop=stop)
+
+
+def _add_plus_one(key: tuple, shape: tuple[int, ...]) -> tuple:
+    new_key = ()
+    for idx, size in zip(key, shape):
+        if isinstance(idx, int):
+            new_key += (normalize_axis_index(idx, size) + 1,)
+        elif isinstance(idx, slice):
+            new_key += (_slice_plus_one(idx, size),)
+        elif isinstance(idx, (list, np.ndarray, tuple)):
+            idx = normalize_axis_tuple(idx, size)
+            new_key += (jl.Vector([i + 1 for i in idx]),)
+        elif idx is None:
+            raise IndexError("'None' in the index key isn't supported")
+        else:
+            new_key += (idx,)
+    return new_key
+
+
+def _expand_ellipsis(key: tuple, shape: tuple[int, ...]) -> tuple:
+    ndim = len(shape)
+    ellipsis_pos = None
+    key_without_ellipsis = ()
+    # first we need to find the ellipsis and confirm it's the only one
+    for pos, idx in enumerate(key):
+        if idx == Ellipsis:
+            if ellipsis_pos is None:
+                ellipsis_pos = pos
+            else:
+                raise IndexError("an index can only have a single ellipsis ('...')")
+        else:
+            key_without_ellipsis += (idx,)
+    key = key_without_ellipsis
+
+    # then we expand ellipsis with a full range
+    if ellipsis_pos is not None:
+        ellipsis_indices = range(ellipsis_pos, ellipsis_pos + ndim - len(key))
+        new_key = ()
+        key_iter = iter(key)
+        for i in range(ndim):
+            if i in ellipsis_indices:
+                new_key = new_key + (jl.range(start=1, stop=shape[i]),)
+            else:
+                new_key = new_key + (next(key_iter),)
+        key = new_key
+    return key
+
+def _add_missing_dims(key: tuple, shape: tuple[int, ...]) -> tuple:
+    for i in range(len(key), len(shape)):
+        key = key + (jl.range(start=1, stop=shape[i]),)
+    return key
