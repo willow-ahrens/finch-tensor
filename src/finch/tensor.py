@@ -1,7 +1,6 @@
 from typing import Optional, Union
 
 import numpy as np
-import juliacall as jc
 
 from .julia import jl
 from .levels import _Display, Dense, Element, Storage
@@ -99,7 +98,7 @@ class Tensor(_Display):
         return Tensor(jl.Base.broadcast(jl.seval("/"), self._obj, other._obj))
 
     @property
-    def dtype(self) -> jc.TypeValue:
+    def dtype(self) -> np.dtype:
         return jl.eltype(self._obj.body)
 
     @property
@@ -247,7 +246,7 @@ class Tensor(_Display):
 
         lvl = jl.Element(data.dtype.type(fill_value), data)
         ptr = jl.Vector[jl.Int]([1, len(data) + 1])
-        tbl = tuple(jl.OffByOneVector(arr) for arr in coords)
+        tbl = tuple(jl.PlusOneVector(arr) for arr in coords)
 
         jl_data = jl.swizzle(jl.Tensor(jl.SparseCOO[ndim](lvl, shape, ptr, tbl)), *order)
         return jl_data
@@ -268,8 +267,8 @@ class Tensor(_Display):
 
         data, indices, indptr = arg
         dtype = data.dtype.type
-        indices = jl.OffByOneVector(indices)
-        indptr = jl.OffByOneVector(indptr)
+        indices = jl.PlusOneVector(indices)
+        indptr = jl.PlusOneVector(indptr)
 
         lvl = jl.Element(dtype(fill_value), data)
         jl_data = jl.swizzle(
@@ -309,8 +308,8 @@ class Tensor(_Display):
         assert len(indices_list) == len(shape) - 1
         assert len(indptr_list) == len(shape) - 1
 
-        indices_list = [jl.OffByOneVector(i) for i in indices_list]
-        indptr_list = [jl.OffByOneVector(i) for i in indptr_list]
+        indices_list = [jl.PlusOneVector(i) for i in indices_list]
+        indptr_list = [jl.PlusOneVector(i) for i in indptr_list]
 
         lvl = jl.Element(dtype(fill_value), data)
         for size, indices, indptr in zip(shape[:-1], indices_list, indptr_list):
@@ -330,6 +329,20 @@ def fsprand(*args, order=None):
 
 def permute_dims(x: Tensor, axes: tuple[int, ...]):
     return x.permute_dims(axes)
+
+
+def astype(x: Tensor, dtype: jl.DataType, /, *, copy: bool = True):
+    if not copy:
+        if x.dtype == dtype:
+            return x
+        else:
+            raise ValueError("Unable to avoid a copy while casting in no-copy mode.")
+    else:
+        finch_tns = x._obj.body
+        result = jl.copyto_b(
+            jl.similar(finch_tns, jl.default(finch_tns), dtype), finch_tns
+        )
+        return Tensor(jl.swizzle(result, *x.get_order(zero_indexing=False)))
 
 
 def _is_scipy_sparse_obj(x):

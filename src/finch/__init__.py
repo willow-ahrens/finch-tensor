@@ -13,8 +13,27 @@ from .levels import (
 )
 from .tensor import (
     Tensor,
+    astype,
     fsprand,
     permute_dims,
+)
+from .dtypes import (
+    int_,
+    int8,
+    int16,
+    int32,
+    int64,
+    uint,
+    uint8,
+    uint16,
+    uint32,
+    uint64,
+    float16,
+    float32,
+    float64,
+    complex64,
+    complex128,
+    bool,
 )
 
 __all__ = [
@@ -30,6 +49,23 @@ __all__ = [
     "SparseHash",
     "Storage",
     "DenseStorage",
+    "astype",
     "fsprand",
     "permute_dims",
+    "int_",
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "uint",
+    "uint8",
+    "uint16",
+    "uint32",
+    "uint64",
+    "float16",
+    "float32",
+    "float64",
+    "complex64",
+    "complex128",
+    "bool",
 ]
