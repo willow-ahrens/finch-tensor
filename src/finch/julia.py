@@ -1,6 +1,6 @@
 import juliapkg
 
-juliapkg.add("Finch", "9177782c-1635-4eb9-9bfb-d9dfa25e6bce", version="0.6.16")
+juliapkg.add("Finch", "9177782c-1635-4eb9-9bfb-d9dfa25e6bce", version="0.6.19")
 import juliacall  # noqa
 
 juliapkg.resolve()
