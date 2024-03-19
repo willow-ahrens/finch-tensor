@@ -16,6 +16,20 @@ from .tensor import (
     astype,
     fsprand,
     permute_dims,
+    multiply,
+    sum,
+    prod,
+    add,
+    subtract,
+    multiply,
+    divide,
+    positive,
+    negative,
+)
+from .compiled import (
+    lazy,
+    compiled,
+    compute,
 )
 from .dtypes import (
     int_,
@@ -68,4 +82,16 @@ __all__ = [
     "complex64",
     "complex128",
     "bool",
+    "multiply",
+    "lazy",
+    "compiled",
+    "compute",
+    "sum",
+    "prod",
+    "add",
+    "subtract",
+    "multiply",
+    "divide",
+    "positive",
+    "negative",
 ]
