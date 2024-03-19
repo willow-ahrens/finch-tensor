@@ -5,7 +5,8 @@ def check_valid_order(order: tuple[int, ...], /, *, ndim: int | None = None) -> 
     if sorted(order) != list(range(len(order))):
         raise ValueError(f"sorted(order) != range(len(order)), {order=}")
 
-def get_arg_order(order: tuple[int, ...], /) -> tuple[int, ...]:
+
+def get_inverse_order(order: tuple[int, ...], /) -> tuple[int, ...]:
     check_valid_order(order)
     aorder = [0] * len(order)
 
@@ -14,6 +15,9 @@ def get_arg_order(order: tuple[int, ...], /) -> tuple[int, ...]:
 
     return tuple(aorder)
 
-def get_topological_shape(shape : tuple[int | None, ...], /, *, order: tuple[int, ...]) -> tuple[int | None, ...]:
-    aorder = get_arg_order(order)
+
+def get_topological_shape(
+    shape: tuple[int | None, ...], /, *, order: tuple[int, ...]
+) -> tuple[int | None, ...]:
+    aorder = get_inverse_order(order)
     return tuple(shape[o] for o in aorder)
