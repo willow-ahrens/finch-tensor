@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Union
+from typing import Callable, Iterable, Optional, Union
 
 import numpy as np
 from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
@@ -113,7 +113,11 @@ class Tensor(_Display):
         return self._elemwise_op(".^", other)
 
     def __matmul__(self, other):
-        raise NotImplementedError
+        # TODO: Implement and use mul instead of tensordot
+        # https://github.com/willow-ahrens/finch-tensor/pull/22#issuecomment-2007884763
+        if self.ndim != 2 or other.ndim != 2:
+            raise ValueError(f"Both tensors must be 2-dimensional, but are: {self.ndim=} and {other.ndim=}.")
+        return tensordot(self, other, axes=((-1,), (-2,)))
 
     def __abs__(self):
         return self._elemwise_op("abs")
@@ -461,6 +465,20 @@ def prod(
     keepdims: bool = False,
 ) -> Tensor:
     return _reduce(x, jl.prod, axis, dtype)
+
+
+def tensordot(x1: Tensor, x2: Tensor, /, *, axes=2) -> Tensor:
+    if isinstance(axes, Iterable):
+        self_axes = normalize_axis_tuple(axes[0], x1.ndim)
+        other_axes = normalize_axis_tuple(axes[1], x2.ndim)
+        axes = (tuple(i + 1 for i in self_axes), tuple(i + 1 for i in other_axes))
+
+    result = jl.tensordot(x1._obj, x2._obj, axes)
+    return Tensor(result)
+
+
+def matmul(x1: Tensor, x2: Tensor) -> Tensor:
+    return x1 @ x2
 
 
 def add(x1: Tensor, x2: Tensor, /) -> Tensor:
