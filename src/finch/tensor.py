@@ -396,7 +396,15 @@ class Tensor(_Display):
         return Tensor(cls.construct_csf_jl_object(arg, shape))
 
 
-def fsprand(*args):
+def random(shape, density=0.01, random_state=None):
+    args = [*shape, density]
+    if random_state is not None:
+        if isinstance(random_state, np.random.Generator):
+            seed = random_state.integers(np.iinfo(np.int32).max)
+        else:
+            seed = random_state
+        rng = jl.default_rng(seed)
+        args = [rng] + args
     return Tensor(jl.fsprand(*args))
 
 
