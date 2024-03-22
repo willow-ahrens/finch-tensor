@@ -136,3 +136,11 @@ def test_astype(arr3d, order):
 
     with pytest.raises(ValueError, match="Unable to avoid a copy while casting in no-copy mode."):
         finch.astype(arr_finch, finch.float64, copy=False)
+
+
+@pytest.mark.parametrize("random_state", [42, np.random.default_rng(42)])
+def test_random(random_state):
+    result = finch.random((10, 20, 30), density=0.0, random_state=random_state)
+    expected = sparse.random((10, 20, 30), density=0.0, random_state=random_state)
+
+    assert_equal(result.todense(), expected.todense())

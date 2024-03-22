@@ -14,7 +14,7 @@ from .levels import (
 from .tensor import (
     Tensor,
     astype,
-    fsprand,
+    random,
     permute_dims,
     multiply,
     sum,
@@ -64,7 +64,7 @@ __all__ = [
     "Storage",
     "DenseStorage",
     "astype",
-    "fsprand",
+    "random",
     "permute_dims",
     "int_",
     "int8",

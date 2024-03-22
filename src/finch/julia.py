@@ -7,3 +7,4 @@ juliapkg.resolve()
 from juliacall import Main as jl  # noqa
 
 jl.seval("using Finch")
+jl.seval("using Random: default_rng")
