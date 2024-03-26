@@ -86,3 +86,16 @@ def test_reductions(arr3d, func_name, axis, dtype):
         actual = actual.todense()
 
     assert_equal(actual, expected)
+
+
+def test_scalars(arr3d):
+    A_finch = finch.Tensor(arr3d)
+    result = A_finch + finch.Tensor(np.array(1))
+
+    assert result._is_dense
+
+    storage = finch.Storage(finch.Dense(finch.SparseList(finch.SparseList(finch.Element(0)))))
+    B_finch = A_finch.to_device(storage)
+    result = B_finch + finch.Tensor(np.array(1))  # SwizzleArray(Tensor(Element{1, Int64, Int64}([1])), ())
+
+    assert not result._is_dense
