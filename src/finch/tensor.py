@@ -62,17 +62,22 @@ class Tensor(_Display):
 
     def __init__(
         self,
-        obj: Union[np.ndarray, spmatrix, Storage, JuliaObj],
+        obj: Union[np.ndarray, np.number, spmatrix, Storage, JuliaObj],
         /,
         *,
-        fill_value: np.number = 0.0,
+        fill_value: Optional[np.number] = None,
     ):
         if _is_scipy_sparse_obj(obj):  # scipy constructor
             jl_data = self._from_scipy_sparse(obj)
             self._obj = jl_data
         elif isinstance(obj, np.ndarray):  # numpy constructor
+            fill_value = 0.0 if fill_value is None else fill_value
             jl_data = self._from_numpy(obj, fill_value=fill_value)
             self._obj = jl_data
+        elif np.isscalar(obj):
+            if fill_value is not None:
+                raise UserWarning("`fill_value` argument is ignored for scalar input")
+            self._obj = jl.Scalar(obj)
         elif isinstance(obj, Storage):  # from-storage constructor
             order = self.preprocess_order(obj.order, self.get_lvl_ndim(obj.levels_descr._obj))
             self._obj = jl.swizzle(jl.Tensor(obj.levels_descr._obj), *order)

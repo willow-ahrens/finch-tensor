@@ -143,3 +143,16 @@ def test_matmul(arr2d, arr3d):
 
     with pytest.raises(ValueError, match="Both tensors must be 2-dimensional"):
         A_finch @ D_finch
+
+
+def test_scalars(arr3d):
+    A_finch = finch.Tensor(arr3d)
+    result = A_finch + finch.Tensor(1)  # Scalar{1, Int64}(1)
+
+    assert result._is_dense
+
+    storage = finch.Storage(finch.Dense(finch.SparseList(finch.SparseList(finch.Element(0)))))
+    B_finch = A_finch.to_device(storage)
+    result = B_finch + finch.Tensor(1)
+
+    assert not result._is_dense
