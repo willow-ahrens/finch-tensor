@@ -5,7 +5,7 @@ from .tensor import (
     permute_dims,
 )
 from .dtypes import (
-    int_,
+    int,
     int8,
     int16,
     int32,
@@ -39,7 +39,7 @@ __all__ = [
     "astype",
     "fsprand",
     "permute_dims",
-    "int_",
+    "int",
     "int8",
     "int16",
     "int32",

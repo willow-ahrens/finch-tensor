@@ -4,11 +4,11 @@ import numpy as np
 from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
 
 from .julia import jl
-from .levels import _Display, Dense, Element
+from . import levels, formats, utils
 from .typing import OrderType, JuliaObj, spmatrix, TupleOf3Arrays
 
 
-class Tensor(_Display):
+class Tensor(utils.Display):
     """
     A wrapper class for Finch.Tensor and Finch.SwizzleArray.
 

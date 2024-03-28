@@ -15,20 +15,12 @@ class Format:
     order: tuple[int, ...]
     leaf: levels_module.AbstractLeafLevel
 
-    def __init__(
-        self,
-        *,
-        levels: tuple[levels_module.AbstractLevel, ...],
-        order: tuple[int, ...] | None,
-        leaf: levels_module.AbstractLeafLevel,
-    ) -> None:
-        if order is None:
-            order = tuple(range(len(levels)))
+    def __post_init__(self) -> None:
+        utils.check_valid_order(self.order, ndim=len(self.levels))
 
-        utils.check_valid_order(order, ndim=len(levels))
-        self.order = order
-        self.levels = levels
-        self.leaf = leaf
+    @property
+    def ndim(self) -> int:
+        return len(self.order)
 
     def _construct(
         self, *, fill_value, dtype: jl.DataType, data: np.ndarray | None = None

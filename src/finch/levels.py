@@ -6,14 +6,6 @@ from . import dtypes
 from dataclasses import dataclass
 
 
-class _Display(abc.ABC):
-    def __repr__(self):
-        return jl.sprint(jl.show, self._obj)
-
-    def __str__(self):
-        return jl.sprint(jl.show, jl.MIME("text/plain"), self._obj)
-
-
 class AbstractLeafLevel(abc.ABC):
     @abc.abstractmethod
     def _construct(self, *, dtype, fill_value):

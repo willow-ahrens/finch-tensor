@@ -1,3 +1,6 @@
+import abc
+from .julia import jl
+
 def check_valid_order(order: tuple[int, ...], /, *, ndim: int | None = None) -> None:
     if ndim is not None and len(order) != ndim:
         raise ValueError(f"len(order) != ndim, {order=}, {ndim=}")
@@ -21,3 +24,10 @@ def get_topological_shape(
 ) -> tuple[int | None, ...]:
     aorder = get_inverse_order(order)
     return tuple(shape[o] for o in aorder)
+
+class Display(abc.ABC):
+    def __repr__(self):
+        return jl.sprint(jl.show, self._obj)
+
+    def __str__(self):
+        return jl.sprint(jl.show, jl.MIME("text/plain"), self._obj)
