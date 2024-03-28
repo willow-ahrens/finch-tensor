@@ -1,7 +1,7 @@
 from .julia import jl
 
 
-int_: jl.DataType = jl.Int
+int: jl.DataType = jl.Int
 int8: jl.DataType = jl.Int8
 int16: jl.DataType = jl.Int16
 int32: jl.DataType = jl.Int32
