@@ -1,7 +1,7 @@
 import numpy as np
 
 from .julia import jl
-from .typing import OrderType
+from .typing import OrderType, DType
 
 
 class _Display:
@@ -85,8 +85,8 @@ class Storage:
 
 
 class DenseStorage(Storage):
-    def __init__(self, ndim: int, dtype: np.dtype, order: OrderType = None):
-        lvl = Element(np.int_(0).astype(dtype))
+    def __init__(self, ndim: int, dtype: DType, order: OrderType = None):
+        lvl = Element(dtype(0))
         for _ in range(ndim):
             lvl = Dense(lvl)
 
