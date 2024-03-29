@@ -4,8 +4,8 @@ import numpy as np
 from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
 
 from .julia import jl
-from .levels import _Display, Dense, Element, Storage
-from .typing import OrderType, JuliaObj, spmatrix, TupleOf3Arrays
+from .levels import _Display, Dense, Element, Storage, DenseStorage, SparseCOO, SparseList
+from .typing import OrderType, JuliaObj, spmatrix, TupleOf3Arrays, DType
 
 
 class Tensor(_Display):
@@ -172,7 +172,7 @@ class Tensor(_Display):
             return result
 
     @property
-    def dtype(self) -> np.dtype:
+    def dtype(self) -> DType:
         return jl.eltype(self._obj.body)
 
     @property
@@ -186,6 +186,10 @@ class Tensor(_Display):
     @property
     def size(self) -> int:
         return np.prod(self.shape)
+
+    @property
+    def fill_value(self) -> np.number:
+        return jl.default(self._obj)
 
     @property
     def _is_dense(self) -> bool:
@@ -412,11 +416,39 @@ def random(shape, density=0.01, random_state=None):
     return Tensor(jl.fsprand(*args))
 
 
+def asarray(obj, /, *, dtype=None, format=None):
+    if format not in {"coo", "csr", "csc", "csf", "dense", None}:
+        raise ValueError(f"{format} format not supported.")
+    tensor = obj if isinstance(obj, Tensor) else Tensor(obj)
+
+    if format is not None:
+        order = tensor.get_order()
+        if format == "coo":
+            storage = Storage(SparseCOO(tensor.ndim, Element(tensor.fill_value)), order)
+        elif format == "csr":
+            storage = Storage(Dense(SparseList(Element(tensor.fill_value))), order)
+        elif format == "csc":
+            storage = Storage(Dense(SparseList(Element(tensor.fill_value))), order)
+        elif format == "csf":
+            storage = Element(tensor.fill_value)
+            for _ in range(tensor.ndim - 1):
+                storage = SparseList(storage)
+            storage = Storage(Dense(storage), order)
+        elif format == "dense":
+            storage = DenseStorage(tensor.ndim, tensor.dtype, order)
+        tensor = tensor.to_device(storage)
+
+    if dtype is not None:
+        return astype(tensor, dtype)
+    else:
+        return tensor
+
+
 def permute_dims(x: Tensor, axes: tuple[int, ...]):
     return x.permute_dims(axes)
 
 
-def astype(x: Tensor, dtype: jl.DataType, /, *, copy: bool = True):
+def astype(x: Tensor, dtype: DType, /, *, copy: bool = True):
     if not copy:
         if x.dtype == dtype:
             return x

@@ -13,6 +13,7 @@ from .levels import (
 )
 from .tensor import (
     Tensor,
+    asarray,
     astype,
     random,
     tensordot,
@@ -64,6 +65,7 @@ __all__ = [
     "SparseHash",
     "Storage",
     "DenseStorage",
+    "asarray",
     "astype",
     "random",
     "tensordot",
