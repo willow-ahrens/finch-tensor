@@ -145,3 +145,23 @@ def test_astype(arr3d, order):
         ValueError, match="Unable to avoid a copy while casting in no-copy mode."
     ):
         finch.astype(arr_finch, finch.float64, copy=False)
+
+
+@pytest.mark.parametrize("random_state", [42, np.random.default_rng(42)])
+def test_random(random_state):
+    result = finch.random((10, 20, 30), density=0.0, random_state=random_state)
+    expected = sparse.random((10, 20, 30), density=0.0, random_state=random_state)
+
+    assert_equal(result.todense(), expected.todense())
+
+
+@pytest.mark.parametrize("order", ["C", "F"])
+@pytest.mark.parametrize("format", ["coo", "csr", "csc", "csf", "dense", None])
+def test_asarray(arr2d, arr3d, order, format):
+    arr = arr3d if format == "csf" else arr2d
+    arr = np.array(arr, order=order)
+    arr_finch = finch.Tensor(arr)
+
+    result = finch.asarray(arr_finch, format=format)
+
+    assert_equal(result.todense(), arr)

@@ -6,6 +6,7 @@ import numpy as np
 from .julia import jl
 from . import levels as levels_module
 from . import utils
+from .typing import DType
 from dataclasses import dataclass
 
 
@@ -22,9 +23,7 @@ class Format:
     def ndim(self) -> int:
         return len(self.order)
 
-    def _construct(
-        self, *, fill_value, dtype: jl.DataType, data: np.ndarray | None = None
-    ):
+    def _construct(self, *, fill_value, dtype: DType, data: np.ndarray | None = None):
         if data is not None:
             data_order = tuple(
                 x[0]
@@ -32,6 +31,8 @@ class Format:
             )
             data_inv_order = utils.get_inverse_order(data_order)
             data_raw = data.transpose(data_inv_order)
+            if not data.flags.f_contiguous:
+                data_raw = data_raw.copy(order="F")
 
         out_level = self.leaf._construct(dtype=dtype, fill_value=fill_value)
         for level in reversed(self.levels):
@@ -58,7 +59,7 @@ CSC = Format(
 
 
 class FlexibleFormat(abc.ABC):
-    def _construct(self, *, ndim: int, fill_value, dtype: jl.DataType, data=None):
+    def _construct(self, *, ndim: int, fill_value, dtype: DType, data=None):
         return self._get_format(ndim)._construct(
             fill_value=fill_value, dtype=dtype, data=data
         )
