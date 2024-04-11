@@ -23,7 +23,16 @@ def test_indexing_1d(arr1d, index, order):
 
 
 @pytest.mark.parametrize(
-    "index", [..., 0, (2,), (2, 3), slice(None), (..., slice(0, 4, 2)), (-1, slice(-1, None, -1))]
+    "index",
+    [
+        ...,
+        0,
+        (2,),
+        (2, 3),
+        slice(None),
+        (..., slice(0, 4, 2)),
+        (-1, slice(-1, None, -1)),
+    ],
 )
 @pytest.mark.parametrize("order", ["C", "F"])
 def test_indexing_2d(arr2d, index, order):
@@ -42,21 +51,34 @@ def test_indexing_2d(arr2d, index, order):
 @pytest.mark.parametrize(
     "index",
     [
-        (0, 1, 2), (1, 0, 0), (0, 1), 1, 2,
-        (2, slice(None), 3), (slice(None), 0), slice(None),
+        (0, 1, 2),
+        (1, 0, 0),
+        (0, 1),
+        1,
+        2,
+        (2, slice(None), 3),
+        (slice(None), 0),
+        slice(None),
         (0, slice(None), slice(1, 4, 2)),
-        (0, 1, ...), (..., 1), (0, ..., 1), ..., (..., slice(1, 4, 2)),
+        (0, 1, ...),
+        (..., 1),
+        (0, ..., 1),
+        ...,
+        (..., slice(1, 4, 2)),
         (slice(None, None, -1), slice(None, None, -1), slice(None, None, -1)),
         (slice(None, -1, 1), slice(-1, None, -1), slice(4, 1, -1)),
-        (-1, 0, 0), (0, -1, -2), ([1, 2], 0, slice(3, None, -1)),
+        (-1, 0, 0),
+        (0, -1, -2),
+        ([1, 2], 0, slice(3, None, -1)),
         (0, slice(1, 0, -1), 0),
-    ]
+    ],
 )
 @pytest.mark.parametrize(
-    "levels_descr", [
+    "levels_descr",
+    [
         finch.Dense(finch.Dense(finch.Dense(finch.Element(0)))),
         finch.Dense(finch.SparseList(finch.SparseList(finch.Element(0)))),
-    ]
+    ],
 )
 @pytest.mark.parametrize("order", ["C", "F"])
 def test_indexing_3d(arr3d, index, levels_descr, order):

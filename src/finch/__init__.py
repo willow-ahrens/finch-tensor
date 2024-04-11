@@ -1,16 +1,3 @@
-from .levels import (
-    Dense,
-    Element,
-    Pattern,
-    SparseList,
-    SparseByteMap,
-    RepeatRLE,
-    SparseVBL,
-    SparseCOO,
-    SparseHash,
-    Storage,
-    DenseStorage,
-)
 from .tensor import (
     Tensor,
     asarray,
@@ -50,7 +37,7 @@ from .compiled import (
     compute,
 )
 from .dtypes import (
-    int_,
+    int,
     int8,
     int16,
     int32,
@@ -87,7 +74,7 @@ __all__ = [
     "tensordot",
     "matmul",
     "permute_dims",
-    "int_",
+    "int",
     "int8",
     "int16",
     "int32",
