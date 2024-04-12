@@ -3,6 +3,7 @@ from typing import Callable, Iterable, Optional, Union
 import numpy as np
 from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
 
+from .dtypes import bool as finch_bool
 from .julia import jl
 from .levels import _Display, Dense, Element, Storage, DenseStorage, SparseCOO, SparseList
 from .typing import OrderType, JuliaObj, spmatrix, TupleOf3Arrays, DType
@@ -295,7 +296,10 @@ class Tensor(_Display):
         order = cls.preprocess_order(order_char, arr.ndim)
         inv_order = tuple(i - 1 for i in jl.invperm(order))
 
-        lvl = Element(arr.dtype.type(fill_value), arr.reshape(-1, order=order_char))
+        dtype = arr.dtype.type
+        if dtype == np.bool_:  # Fails with: Finch currently only supports isbits defaults
+            dtype = finch_bool
+        lvl = Element(dtype(fill_value), arr.reshape(-1, order=order_char))
         for i in inv_order:
             lvl = Dense(lvl, arr.shape[i])
         return jl.swizzle(jl.Tensor(lvl._obj), *order)
@@ -460,6 +464,27 @@ def astype(x: Tensor, dtype: DType, /, *, copy: bool = True):
             jl.similar(finch_tns, jl.default(finch_tns), dtype), finch_tns
         )
         return Tensor(jl.swizzle(result, *x.get_order(zero_indexing=False)))
+
+
+def where(condition: Tensor, x1: Tensor, x2: Tensor, /) -> Tensor:
+    axis_cond, axis_x1, axis_x2 = range(condition.ndim, 0, -1), range(x1.ndim, 0, -1), range(x2.ndim, 0, -1)
+    # inverse swizzle, so `broadcast` appends new dims to the front
+    result = jl.broadcast(
+        jl.ifelse,
+        jl.permutedims(condition._obj, tuple(axis_cond)),
+        jl.permutedims(x1._obj, tuple(axis_x1)),
+        jl.permutedims(x2._obj, tuple(axis_x2)),
+    )
+    # swizzle back to the original order
+    result = jl.permutedims(result, tuple(range(jl.ndims(result), 0, -1)))
+    return Tensor(result)
+
+
+def nonzero(x: Tensor, /) -> tuple[np.ndarray, ...]:
+    indices = jl.ffindnz(x._obj)[:-1]  # return only indices, skip values
+    indices = tuple(np.asarray(i) - 1 for i in indices)
+    sort_order = np.lexsort(indices[::-1])  # sort to row-major, C-style order
+    return tuple(i[sort_order] for i in indices)
 
 
 def _reduce(x: Tensor, fn: Callable, axis, dtype):

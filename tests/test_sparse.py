@@ -156,3 +156,46 @@ def test_asarray(arr2d, arr3d, order, format):
     result = finch.asarray(arr_finch, format=format)
 
     assert_equal(result.todense(), arr)
+
+
+@pytest.mark.parametrize("order", ["C", "F"])
+@pytest.mark.parametrize("format", [None, "coo", "csc"])
+def test_where(order, format):
+    cond = np.array(
+        [[True, False, False, False],
+         [False, True, True, False],
+         [True, False, True, True]],
+        order=order,
+    )
+    arr1 = np.array([[0, 0, 0, 1], [0, 2, 0, 3], [1, 0, 0, 5]], order=order)
+    arr2 = np.array([10, 20, 30, 40], order=order)
+
+    tns_cond = finch.asarray(cond, format=format)
+    arr1_cond = finch.asarray(arr1, format=format)
+    arr2_cond = finch.asarray(arr2)
+
+    actual = finch.where(tns_cond, arr1_cond, arr2_cond)
+    expected = np.where(cond, arr1, arr2)
+
+    assert_equal(actual.todense(), expected)
+
+
+@pytest.mark.parametrize("order", ["C", "F"])
+@pytest.mark.parametrize(
+    "format_shape",
+    [("coo", (80,)), ("coo", (10, 5, 8)), ("csf", (10, 5, 8)), ("csr", (5, 10)), ("csc", (5, 10))],
+)
+def test_nonzero(order, format_shape):
+    format, shape = format_shape
+    rng = np.random.default_rng(0)
+    arr = rng.random(shape)
+    arr = np.array(arr, order=order)
+    mask = arr < 0.8
+    arr[mask] = 0.0
+
+    tns = finch.asarray(arr, format=format)
+
+    actual = finch.nonzero(tns)
+    expected = np.nonzero(arr)
+    for actual_i, expected_i in zip(actual, expected):
+        assert_equal(actual_i, expected_i)
