@@ -153,14 +153,20 @@ def test_asarray(arr2d, arr3d, order, format):
     arr = np.array(arr, order=order)
     arr_finch = finch.Tensor(arr)
 
-    result = finch.asarray(arr_finch, format=format)
+    if (format, order) in [("csr", "F"), ("csc", "C")]:
+        with pytest.raises(ValueError, match="Invalid order for (csr|csc)"):
+            finch.asarray(arr_finch, format=format)
+    else:
+        result = finch.asarray(arr_finch, format=format)
+        assert_equal(result.todense(), arr)
 
-    assert_equal(result.todense(), arr)
 
-
-@pytest.mark.parametrize("order", ["C", "F"])
-@pytest.mark.parametrize("format", [None, "coo", "csc"])
-def test_where(order, format):
+@pytest.mark.parametrize(
+    "order_and_format",
+    [("C", None), ("F", None), ("C", "coo"), ("F", "coo"),("F", "csc")],
+)
+def test_where(order_and_format):
+    order, format = order_and_format
     cond = np.array(
         [[True, False, False, False],
          [False, True, True, False],
@@ -187,6 +193,8 @@ def test_where(order, format):
 )
 def test_nonzero(order, format_shape):
     format, shape = format_shape
+    if (format, order) in [("csr", "F"), ("csc", "C")]:
+        pytest.skip("invalid format+order")
     rng = np.random.default_rng(0)
     arr = rng.random(shape)
     arr = np.array(arr, order=order)

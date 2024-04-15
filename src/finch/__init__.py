@@ -13,6 +13,7 @@ from .levels import (
 )
 from .tensor import (
     Tensor,
+    SparseArray,
     asarray,
     astype,
     random,
@@ -72,6 +73,7 @@ from .dtypes import (
 
 __all__ = [
     "Tensor",
+    "SparseArray",
     "Dense",
     "Element",
     "Pattern",
