@@ -73,6 +73,19 @@ class SparseHash(AbstractLevel):
         self._obj = jl.SparseHash[ndim](lvl._obj)
 
 
+sparse_formats_names = (
+    "SparseList",
+    "Sparse",
+    "SparseHash",
+    "SparseCOO",
+    "SparseRLE",
+    "SparseVBL",
+    "SparseBand",
+    "SparsePoint",
+    "SparseInterval",
+)
+
+
 # STORAGE
 
 class Storage:

@@ -5,7 +5,16 @@ from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
 
 from .dtypes import bool as finch_bool
 from .julia import jl
-from .levels import _Display, Dense, Element, Storage, DenseStorage, SparseCOO, SparseList
+from .levels import (
+    _Display,
+    Dense,
+    Element,
+    Storage,
+    DenseStorage,
+    SparseCOO,
+    SparseList,
+    sparse_formats_names,
+)
 from .typing import OrderType, JuliaObj, spmatrix, TupleOf3Arrays, DType
 
 
@@ -314,6 +323,8 @@ class Tensor(_Display, SparseArray):
     def from_scipy_sparse(cls, x) -> "Tensor":
         if not _is_scipy_sparse_obj(x):
             raise ValueError("{x} is not a SciPy sparse object.")
+        if x.format not in ("coo", "csr", "csc"):
+            x = x.asformat("coo")
         return Tensor(x)
 
     @classmethod
@@ -445,8 +456,14 @@ class Tensor(_Display, SparseArray):
             indptr = np.asarray(body.lvl.lvl.ptr) - 1
             sp_class = sp.csr_matrix if order == (1, 0) else sp.csc_matrix
             return sp_class((data, indices, indptr), shape=self.shape)
-
-        raise ValueError("Invalid format. Tensor should be a COO, CSR or CSC.")
+        if (
+            jl.typeof(body.lvl).name.name in sparse_formats_names or
+            jl.typeof(body.lvl.lvl).name.name in sparse_formats_names
+        ):
+            storage = Storage(SparseCOO(self.ndim, Element(self.fill_value)), order)
+            return self.to_device(storage).to_scipy_sparse()
+        else:
+            raise ValueError("Tensor can't be converted to scipy.sparse object.")
 
 
 def random(shape, density=0.01, random_state=None):

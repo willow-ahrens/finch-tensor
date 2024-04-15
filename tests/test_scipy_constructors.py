@@ -64,5 +64,23 @@ def test_to_scipy_sparse_invalid_input():
 
     finch_arr = finch.asarray(np.ones((3,4)), format="dense")
 
-    with pytest.raises(ValueError, match="Invalid format. Tensor should be a COO, CSR or CSC."):
+    with pytest.raises(ValueError, match="Tensor can't be converted to scipy.sparse object"):
         finch_arr.to_scipy_sparse()
+
+
+@pytest.mark.parametrize(
+    "format_with_pattern",
+    [
+        ("coo", "SparseCOO"),
+        ("csr", "SparseList"),
+        ("csc", "SparseList"),
+        ("bsr", "SparseCOO"),
+        ("dok", "SparseCOO")
+    ],
+)
+def test_from_scipy_sparse(format_with_pattern):
+    format, pattern = format_with_pattern
+    sp_arr = sp.random(10, 5, density=0.1, format=format)
+
+    result = finch.Tensor.from_scipy_sparse(sp_arr)
+    assert pattern in str(result)
