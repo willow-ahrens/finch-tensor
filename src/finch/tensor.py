@@ -5,11 +5,26 @@ from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
 
 from .dtypes import bool as finch_bool
 from .julia import jl
-from .levels import _Display, Dense, Element, Storage, DenseStorage, SparseCOO, SparseList
+from .levels import (
+    _Display,
+    Dense,
+    Element,
+    Storage,
+    DenseStorage,
+    SparseCOO,
+    SparseList,
+    sparse_formats_names,
+)
 from .typing import OrderType, JuliaObj, spmatrix, TupleOf3Arrays, DType
 
 
-class Tensor(_Display):
+class SparseArray:
+    """
+    PyData/Sparse marker class
+    """
+
+
+class Tensor(_Display, SparseArray):
     """
     A wrapper class for Finch.Tensor and Finch.SwizzleArray.
 
@@ -305,6 +320,14 @@ class Tensor(_Display):
         return jl.swizzle(jl.Tensor(lvl._obj), *order)
 
     @classmethod
+    def from_scipy_sparse(cls, x) -> "Tensor":
+        if not _is_scipy_sparse_obj(x):
+            raise ValueError("{x} is not a SciPy sparse object.")
+        if x.format not in ("coo", "csr", "csc"):
+            x = x.asformat("coo")
+        return Tensor(x)
+
+    @classmethod
     def _from_scipy_sparse(cls, x) -> JuliaObj:
         if x.format == "coo":
             return cls.construct_coo_jl_object(
@@ -407,6 +430,41 @@ class Tensor(_Display):
     def construct_csf(cls, arg: TupleOf3Arrays, shape: tuple[int, ...]) -> "Tensor":
         return Tensor(cls.construct_csf_jl_object(arg, shape))
 
+    def to_scipy_sparse(self):
+        import scipy.sparse as sp
+
+        if self.ndim != 2:
+            raise ValueError("Can only convert a 2-dimensional array to a Scipy sparse matrix.")
+        if self.fill_value != 0:
+            raise ValueError("Can only convert arrays with 0 fill value to a Scipy sparse matrix.")
+        order = self.get_order()
+        body = self._obj.body
+
+        if str(jl.typeof(body.lvl).name.name) == "SparseCOOLevel":
+            data = np.asarray(body.lvl.lvl.val)
+            coords = body.lvl.tbl
+            row, col = coords[::-1] if order == (1, 0) else coords
+            row, col = np.asarray(row) - 1, np.asarray(col) - 1
+            return sp.coo_matrix((data, (row, col)), shape=self.shape)
+
+        if (
+            str(jl.typeof(body.lvl).name.name) == "DenseLevel" and
+            str(jl.typeof(body.lvl.lvl).name.name) == "SparseListLevel"
+        ):
+            data = np.asarray(body.lvl.lvl.lvl.val)
+            indices = np.asarray(body.lvl.lvl.idx) - 1
+            indptr = np.asarray(body.lvl.lvl.ptr) - 1
+            sp_class = sp.csr_matrix if order == (1, 0) else sp.csc_matrix
+            return sp_class((data, indices, indptr), shape=self.shape)
+        if (
+            jl.typeof(body.lvl).name.name in sparse_formats_names or
+            jl.typeof(body.lvl.lvl).name.name in sparse_formats_names
+        ):
+            storage = Storage(SparseCOO(self.ndim, Element(self.fill_value)), order)
+            return self.to_device(storage).to_scipy_sparse()
+        else:
+            raise ValueError("Tensor can't be converted to scipy.sparse object.")
+
 
 def random(shape, density=0.01, random_state=None):
     args = [*shape, density]
@@ -430,9 +488,13 @@ def asarray(obj, /, *, dtype=None, format=None):
         if format == "coo":
             storage = Storage(SparseCOO(tensor.ndim, Element(tensor.fill_value)), order)
         elif format == "csr":
-            storage = Storage(Dense(SparseList(Element(tensor.fill_value))), order)
+            if order != (1, 0):
+                raise ValueError("Invalid order for csr")
+            storage = Storage(Dense(SparseList(Element(tensor.fill_value))), (2, 1))
         elif format == "csc":
-            storage = Storage(Dense(SparseList(Element(tensor.fill_value))), order)
+            if order != (0, 1):
+                raise ValueError("Invalid order for csc")
+            storage = Storage(Dense(SparseList(Element(tensor.fill_value))), (1, 2))
         elif format == "csf":
             storage = Element(tensor.fill_value)
             for _ in range(tensor.ndim - 1):
