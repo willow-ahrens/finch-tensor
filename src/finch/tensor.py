@@ -1,9 +1,9 @@
-from typing import Callable, Iterable, Optional, Union
+from typing import Callable, Iterable, Optional, Union, Literal
 
 import numpy as np
 from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
 
-from .dtypes import bool as finch_bool
+from . import dtypes as jl_dtypes
 from .julia import jl
 from .levels import (
     _Display,
@@ -313,7 +313,7 @@ class Tensor(_Display, SparseArray):
 
         dtype = arr.dtype.type
         if dtype == np.bool_:  # Fails with: Finch currently only supports isbits defaults
-            dtype = finch_bool
+            dtype = jl_dtypes.bool
         lvl = Element(dtype(fill_value), arr.reshape(-1, order=order_char))
         for i in inv_order:
             lvl = Dense(lvl, arr.shape[i])
@@ -584,6 +584,38 @@ def prod(
     keepdims: bool = False,
 ) -> Tensor:
     return _reduce(x, jl.prod, axis, dtype)
+
+
+def eye(
+    n_rows: int,
+    n_cols: Optional[int] = None,
+    /,
+    *,
+    k: int = 0,
+    dtype: Optional[DType] = None,
+    format: Literal["coo", "dense"] = "coo",
+) -> Tensor:
+    n_cols = n_rows if n_cols is None else n_cols
+    dtype = jl_dtypes.float64 if dtype is None else dtype
+    if format == "coo":
+        tns_def = "SparseCOO{2}" + f"(Element({dtype}(0.0)))"
+    elif format == "dense":
+        tns_def = f"Dense(Dense(Element({dtype}(0.0))))"
+    else:
+        raise ValueError(f"{format} not supported, only 'coo' and 'dense' is allowed.")
+
+    obj = jl.seval(f"tns = Tensor({tns_def}, {n_rows}, {n_cols})")
+    jl.seval(f"""
+        @finch begin
+            tns .= 0
+            for i=_, j=_
+                if i+{k} == j
+                    tns[i, j] += 1
+                end
+            end
+        end
+    """)
+    return Tensor(obj)
 
 
 def tensordot(x1: Tensor, x2: Tensor, /, *, axes=2) -> Tensor:

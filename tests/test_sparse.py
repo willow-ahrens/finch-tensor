@@ -207,3 +207,13 @@ def test_nonzero(order, format_shape):
     expected = np.nonzero(arr)
     for actual_i, expected_i in zip(actual, expected):
         assert_equal(actual_i, expected_i)
+
+
+@pytest.mark.parametrize("dtype_name", ["int64", "float64", "complex128"])
+@pytest.mark.parametrize("k", [0, -1, 1, -2, 2])
+@pytest.mark.parametrize("format", ["coo", "dense"])
+def test_eye(dtype_name, k, format):
+    result = finch.eye(3, 4, k=k, dtype=getattr(finch, dtype_name), format=format)
+    expected = np.eye(3, 4, k=k, dtype=getattr(np, dtype_name))
+
+    assert_equal(result.todense(), expected)
