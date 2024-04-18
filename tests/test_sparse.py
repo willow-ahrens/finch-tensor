@@ -145,6 +145,13 @@ def test_random(random_state):
 
     assert_equal(result.todense(), expected.todense())
 
+    # test reproducible runs
+    run1 = finch.random((20, 20), density=0.8, random_state=0)
+    run2 = finch.random((20, 20), density=0.8, random_state=0)
+    run3 = finch.random((20, 20), density=0.8, random_state=0)
+    assert_equal(run1.todense(), run2.todense())
+    assert_equal(run1.todense(), run3.todense())
+
 
 @pytest.mark.parametrize("order", ["C", "F"])
 @pytest.mark.parametrize("format", ["coo", "csr", "csc", "csf", "dense", None])

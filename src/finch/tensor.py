@@ -473,7 +473,8 @@ def random(shape, density=0.01, random_state=None):
             seed = random_state.integers(np.iinfo(np.int32).max)
         else:
             seed = random_state
-        rng = jl.default_rng(seed)
+        rng = jl.Random.default_rng()
+        jl.Random.seed_b(rng, seed)
         args = [rng] + args
     return Tensor(jl.fsprand(*args))
 
