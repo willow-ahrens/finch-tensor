@@ -6,9 +6,12 @@ import sparse
 import finch
 
 
-@pytest.mark.parametrize("dtype", [np.int64, np.float64, np.complex128])
+@pytest.mark.parametrize(
+    "dtype,jl_dtype",
+    [(np.int64, finch.int64), (np.float64, finch.float64), (np.complex128, finch.complex128)]
+)
 @pytest.mark.parametrize("order", ["C", "F", None])
-def test_wrappers(dtype, order):
+def test_wrappers(dtype, jl_dtype, order):
     A = np.array([[0, 0, 4], [1, 0, 0], [2, 0, 5], [3, 0, 0]], dtype=dtype, order=order)
     B = np.array(np.stack([A, A], axis=2, dtype=dtype), order=order)
 
@@ -19,6 +22,8 @@ def test_wrappers(dtype, order):
     )
     B_finch = B_finch.to_device(storage)
 
+    assert B_finch.shape == B.shape
+    assert B_finch.dtype == jl_dtype
     assert_equal(B_finch.todense(), B)
 
     storage = finch.Storage(
@@ -26,6 +31,8 @@ def test_wrappers(dtype, order):
     )
     A_finch = finch.Tensor(A).to_device(storage)
 
+    assert A_finch.shape == A.shape
+    assert A_finch.dtype == jl_dtype
     assert_equal(A_finch.todense(), A)
     assert A_finch.todense().dtype == A.dtype and B_finch.todense().dtype == B.dtype
 
