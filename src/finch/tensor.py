@@ -1,3 +1,4 @@
+import builtins
 from typing import Callable, Iterable, Optional, Union, Literal
 
 import numpy as np
@@ -83,6 +84,9 @@ class Tensor(_Display, SparseArray):
         *,
         fill_value: np.number = 0.0,
     ):
+        if isinstance(obj, (int, float, complex, bool)):
+            obj = np.array(obj)
+
         if _is_scipy_sparse_obj(obj):  # scipy constructor
             jl_data = self._from_scipy_sparse(obj)
             self._obj = jl_data
@@ -232,11 +236,11 @@ class Tensor(_Display, SparseArray):
         elif order == cls.row_major or order is None:
             permutation = tuple(range(1, ndim + 1)[::-1])
         elif isinstance(order, tuple):
-            if min(order) == 0:
+            if builtins.min(order) == 0:
                 order = tuple(i + 1 for i in order)
             if (
                 len(order) == ndim and
-                all([i in order for i in range(1, ndim + 1)])
+                builtins.all([i in order for i in range(1, ndim + 1)])
             ):
                 permutation = order
             else:
@@ -550,7 +554,7 @@ def nonzero(x: Tensor, /) -> tuple[np.ndarray, ...]:
     return tuple(i[sort_order] for i in indices)
 
 
-def _reduce(x: Tensor, fn: Callable, axis, dtype):
+def _reduce(x: Tensor, fn: Callable, axis, dtype = None):
     if axis is not None:
         axis = normalize_axis_tuple(axis, x.ndim)
         axis = tuple(i + 1 for i in axis)
@@ -585,6 +589,46 @@ def prod(
     keepdims: bool = False,
 ) -> Tensor:
     return _reduce(x, jl.prod, axis, dtype)
+
+
+def max(
+    x: Tensor,
+    /,
+    *,
+    axis: Union[int, tuple[int, ...], None] = None,
+    keepdims: bool = False,
+) -> Tensor:
+    return _reduce(x, jl.maximum, axis)
+
+
+def min(
+    x: Tensor,
+    /,
+    *,
+    axis: Union[int, tuple[int, ...], None] = None,
+    keepdims: bool = False,
+) -> Tensor:
+    return _reduce(x, jl.minimum, axis)
+
+
+def any(
+    x: Tensor,
+    /,
+    *,
+    axis: Union[int, tuple[int, ...], None] = None,
+    keepdims: bool = False,
+) -> Tensor:
+    return _reduce(x, jl.any, axis)
+
+
+def all(
+    x: Tensor,
+    /,
+    *,
+    axis: Union[int, tuple[int, ...], None] = None,
+    keepdims: bool = False,
+) -> Tensor:
+    return _reduce(x, jl.all, axis)
 
 
 def eye(
@@ -655,6 +699,50 @@ def floor_divide(x1: Tensor, x2: Tensor, /) -> Tensor:
 
 def pow(x1: Tensor, x2: Tensor, /) -> Tensor:
     return x1 ** x2
+
+
+def log(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("log")
+
+
+def log10(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("log10")
+
+
+def log1p(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("log1p")
+
+
+def log2(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("log2")
+
+
+def sqrt(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("sqrt")
+
+
+def sign(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("sign")
+
+
+def round(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("round")
+
+
+def exp(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("exp")
+
+
+def expm1(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("expm1")
+
+
+def floor(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("floor")
+
+
+def ceil(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("ceil")
 
 
 def positive(x: Tensor, /) -> Tensor:

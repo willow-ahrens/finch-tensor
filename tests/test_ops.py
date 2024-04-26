@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.testing import assert_equal
+from numpy.testing import assert_equal, assert_allclose
 import pytest
 
 import finch
@@ -46,9 +46,22 @@ def test_lazy_mode(arr3d):
 
 
 @pytest.mark.parametrize(
+    "func_name", ["log", "log10", "log1p", "log2", "sqrt", "sign", "round", "exp", "expm1", "floor", "ceil"],
+)
+def test_elemwise_ops_1_arg(arr3d, func_name):
+    arr = arr3d + 1.6
+    A_finch = finch.Tensor(arr)
+
+    actual = getattr(finch, func_name)(A_finch)
+    expected = getattr(np, func_name)(arr)
+
+    assert_allclose(actual.todense(), expected)
+
+
+@pytest.mark.parametrize(
     "meth_name", ["__pos__", "__neg__", "__abs__"],
 )
-def test_elemwise_ops_1_arg(arr3d, meth_name):
+def test_elemwise_tensor_ops_1_arg(arr3d, meth_name):
     A_finch = finch.Tensor(arr3d)
 
     actual = getattr(A_finch, meth_name)()
@@ -62,7 +75,7 @@ def test_elemwise_ops_1_arg(arr3d, meth_name):
     ["__add__", "__mul__", "__sub__", "__truediv__", # "__floordiv__", "__mod__",
      "__pow__", "__and__", "__or__", "__xor__", "__lshift__", "__rshift__"],
 )
-def test_elemwise_ops_2_args(arr3d, meth_name):
+def test_elemwise_tensor_ops_2_args(arr3d, meth_name):
     arr2d = np.array([[2, 3, 2, 3], [3, 2, 3, 2]])
     A_finch = finch.Tensor(arr3d)
     B_finch = finch.Tensor(arr2d)
@@ -73,14 +86,16 @@ def test_elemwise_ops_2_args(arr3d, meth_name):
     assert_equal(actual.todense(), expected)
 
 
-@pytest.mark.parametrize("func_name", ["sum", "prod"])
+@pytest.mark.parametrize("func_name", ["sum", "prod", "max", "min", "any", "all"])
 @pytest.mark.parametrize("axis", [None, -1, 1, (0, 1), (0, 1, 2)])
-@pytest.mark.parametrize("dtype", [None])
+@pytest.mark.parametrize("dtype", [None])  # not supported yet
 def test_reductions(arr3d, func_name, axis, dtype):
+    if func_name in ("any", "all"):
+        arr3d = arr3d.astype(bool)
     A_finch = finch.Tensor(arr3d)
 
-    actual = getattr(finch, func_name)(A_finch, axis=axis, dtype=dtype)
-    expected = getattr(np, func_name)(arr3d, axis=axis, dtype=dtype)
+    actual = getattr(finch, func_name)(A_finch, axis=axis)
+    expected = getattr(np, func_name)(arr3d, axis=axis)
 
     if isinstance(actual, finch.Tensor):
         actual = actual.todense()

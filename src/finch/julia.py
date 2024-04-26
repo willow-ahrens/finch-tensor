@@ -1,6 +1,6 @@
 import juliapkg
 
-_FINCH_VERSION = "0.6.21"
+_FINCH_VERSION = "0.6.22"
 _FINCH_HASH = "9177782c-1635-4eb9-9bfb-d9dfa25e6bce"
 
 deps = juliapkg.deps.load_cur_deps()
