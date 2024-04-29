@@ -175,6 +175,29 @@ def test_asarray(arr2d, arr3d, order, format):
         assert_equal(result.todense(), arr)
 
 
+@pytest.mark.parametrize("shape", [10, (3, 3), (2, 1, 5)])
+@pytest.mark.parametrize("dtype_name", [None, "int64", "float64"])
+@pytest.mark.parametrize("format", ["coo", "dense"])
+def test_full_ones_zeros(shape, dtype_name, format):
+    jl_dtype = getattr(finch, dtype_name) if dtype_name is not None else None
+    np_dtype = getattr(np, dtype_name) if dtype_name is not None else None
+
+    res = finch.full(shape, 2.0, dtype=jl_dtype, format=format)
+    assert_equal(res.todense(), np.full(shape, 2.0, np_dtype))
+    res = finch.full_like(res, 3.0, dtype=jl_dtype, format=format)
+    assert_equal(res.todense(), np.full(shape, 3.0, np_dtype))
+
+    res = finch.ones(shape, dtype=jl_dtype, format=format)
+    assert_equal(res.todense(), np.ones(shape, np_dtype))
+    res = finch.ones_like(res, dtype=jl_dtype, format=format)
+    assert_equal(res.todense(), np.ones(shape, np_dtype))
+
+    res = finch.zeros(shape, dtype=jl_dtype, format=format)
+    assert_equal(res.todense(), np.zeros(shape, np_dtype))
+    res = finch.zeros_like(res, dtype=jl_dtype, format=format)
+    assert_equal(res.todense(), np.zeros(shape, np_dtype))
+
+
 @pytest.mark.parametrize(
     "order_and_format",
     [("C", None), ("F", None), ("C", "coo"), ("F", "coo"),("F", "csc")],

@@ -59,7 +59,7 @@ def test_elemwise_ops_1_arg(arr3d, func_name):
 
 
 @pytest.mark.parametrize(
-    "meth_name", ["__pos__", "__neg__", "__abs__"],
+    "meth_name", ["__pos__", "__neg__", "__abs__", "__invert__"],
 )
 def test_elemwise_tensor_ops_1_arg(arr3d, meth_name):
     A_finch = finch.Tensor(arr3d)
@@ -73,7 +73,8 @@ def test_elemwise_tensor_ops_1_arg(arr3d, meth_name):
 @pytest.mark.parametrize(
     "meth_name",
     ["__add__", "__mul__", "__sub__", "__truediv__", # "__floordiv__", "__mod__",
-     "__pow__", "__and__", "__or__", "__xor__", "__lshift__", "__rshift__"],
+     "__pow__", "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
+     "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"],
 )
 def test_elemwise_tensor_ops_2_args(arr3d, meth_name):
     arr2d = np.array([[2, 3, 2, 3], [3, 2, 3, 2]])

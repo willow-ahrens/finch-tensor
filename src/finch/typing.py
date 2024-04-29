@@ -11,6 +11,6 @@ TupleOf3Arrays = tuple[np.ndarray, np.ndarray, np.ndarray]
 
 JuliaObj = jc.AnyValue
 
-DType = jl.DataType
+DType = jc.AnyValue  # represents jl.DataType
 
 spmatrix = Any
