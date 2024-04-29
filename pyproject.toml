@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "finch-tensor"
-version = "0.1.12"
+version = "0.1.14"
 description = ""
 authors = ["Willow Ahrens <willow.marie.ahrens@gmail.com>"]
 readme = "README.md"
 packages = [{include = "finch", from = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 juliapkg = "^0.1.10"
 juliacall = "^0.9.15"
 numpy = "^1.19"

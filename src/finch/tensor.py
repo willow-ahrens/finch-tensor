@@ -1,5 +1,5 @@
 import builtins
-from typing import Callable, Iterable, Optional, Union, Literal
+from typing import Any, Callable, Optional, Iterable, Literal
 
 import numpy as np
 from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
@@ -79,7 +79,7 @@ class Tensor(_Display, SparseArray):
 
     def __init__(
         self,
-        obj: Union[np.ndarray, spmatrix, Storage, JuliaObj],
+        obj: np.ndarray | spmatrix | Storage | JuliaObj,
         /,
         *,
         fill_value: np.number = 0.0,
@@ -143,22 +143,40 @@ class Tensor(_Display, SparseArray):
         return self._elemwise_op("abs")
 
     def __invert__(self):
-        return self._elemwise_op("~")
+        return self._elemwise_op(".~")
 
     def __and__(self, other):
-        return self._elemwise_op("&", other)
+        return self._elemwise_op(".&", other)
 
     def __or__(self, other):
-        return self._elemwise_op("|", other)
+        return self._elemwise_op(".|", other)
 
     def __xor__(self, other):
         return self._elemwise_op("xor", other)
 
     def __lshift__(self, other):
-        return self._elemwise_op("<<", other)
+        return self._elemwise_op(".<<", other)
 
     def __rshift__(self, other):
-        return self._elemwise_op(">>", other)
+        return self._elemwise_op(".>>", other)
+
+    def __lt__(self, other):
+        return self._elemwise_op(".<", other)
+
+    def __le__(self, other):
+        return self._elemwise_op(".<=", other)
+
+    def __gt__(self, other):
+        return self._elemwise_op(".>", other)
+
+    def __ge__(self, other):
+        return self._elemwise_op(".>=", other)
+
+    def __eq__(self, other):
+        return self._elemwise_op(".==", other)
+
+    def __ne__(self, other):
+        return self._elemwise_op(".!=", other)
 
     def _elemwise_op(self, op: str, other: Optional["Tensor"] = None) -> "Tensor":
         if other is None:
@@ -303,7 +321,7 @@ class Tensor(_Display, SparseArray):
         return Tensor(self._from_other_tensor(self, storage=device))
 
     @classmethod
-    def _from_other_tensor(cls, tensor: "Tensor", storage: Optional[Storage]) -> JuliaObj:
+    def _from_other_tensor(cls, tensor: "Tensor", storage: Storage | None) -> JuliaObj:
         order = cls.preprocess_order(storage.order, tensor.ndim)
         return jl.swizzle(
             jl.Tensor(storage.levels_descr._obj, tensor._obj.body), *order
@@ -469,6 +487,16 @@ class Tensor(_Display, SparseArray):
         else:
             raise ValueError("Tensor can't be converted to scipy.sparse object.")
 
+    def __array_namespace__(self, *, api_version: str | None = None) -> Any:
+        if api_version is None:
+            api_version = "2023.12"
+
+        if api_version not in {"2021.12", "2022.12", "2023.12"}:
+            raise ValueError(f'"{api_version}" Array API version not supported.')
+        import finch
+
+        return finch
+
 
 def random(shape, density=0.01, random_state=None):
     args = [*shape, density]
@@ -513,6 +541,52 @@ def asarray(obj, /, *, dtype=None, format=None):
         return astype(tensor, dtype)
     else:
         return tensor
+
+
+def full(
+    shape: int | tuple[int, ...],
+    fill_value: jl_dtypes.number,
+    *,
+    dtype: DType | None = None,
+    format: str = "coo",
+) -> Tensor:
+    if isinstance(shape, int):
+        shape = (shape,)
+    if dtype is not None:
+        fill_value = dtype(fill_value)
+
+    if format == "coo":
+        return Tensor(jl.Tensor(jl.SparseCOO[len(shape)](jl.Element(fill_value)), *shape))
+    if format == "dense":
+        return Tensor(np.full(shape, fill_value, dtype=jl_dtypes.jl_to_np_dtype[dtype]))
+    raise ValueError(f"{format} format not supported.")
+
+
+def full_like(
+    x: Tensor,
+    /,
+    fill_value: jl_dtypes.number,
+    *,
+    dtype: DType | None = None,
+    format: str = "coo"
+) -> Tensor:
+    return full(x.shape, fill_value, dtype=dtype, format=format)
+
+
+def ones(shape: int | tuple[int, ...], *, dtype: DType | None = None, format: str = "coo") -> Tensor:
+    return full(shape, jl_dtypes.int64(1), dtype=dtype, format=format)
+
+
+def ones_like(x: Tensor, /, *, dtype: DType | None = None, format: str = "coo") -> Tensor:
+    return ones(x.shape, dtype=dtype, format=format)
+
+
+def zeros(shape: int | tuple[int, ...], *, dtype: DType | None = None, format: str = "coo") -> Tensor:
+    return full(shape, jl_dtypes.int64(0), dtype=dtype, format=format)
+
+
+def zeros_like(x: Tensor, /, *, dtype: DType | None = None, format: str = "coo") -> Tensor:
+    return zeros(x.shape, dtype=dtype, format=format)
 
 
 def permute_dims(x: Tensor, axes: tuple[int, ...]):
@@ -573,8 +647,8 @@ def sum(
     x: Tensor,
     /,
     *,
-    axis: Union[int, tuple[int, ...], None] = None,
-    dtype: Union[jl.DataType, None] = None,
+    axis: int | tuple[int, ...] | None = None,
+    dtype: DType | None = None,
     keepdims: bool = False,
 ) -> Tensor:
     return _reduce(x, jl.sum, axis, dtype)
@@ -584,8 +658,8 @@ def prod(
     x: Tensor,
     /,
     *,
-    axis: Union[int, tuple[int, ...], None] = None,
-    dtype: Union[jl.DataType, None] = None,
+    axis: int | tuple[int, ...] | None = None,
+    dtype: DType | None = None,
     keepdims: bool = False,
 ) -> Tensor:
     return _reduce(x, jl.prod, axis, dtype)
@@ -595,7 +669,7 @@ def max(
     x: Tensor,
     /,
     *,
-    axis: Union[int, tuple[int, ...], None] = None,
+    axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
     return _reduce(x, jl.maximum, axis)
@@ -605,7 +679,7 @@ def min(
     x: Tensor,
     /,
     *,
-    axis: Union[int, tuple[int, ...], None] = None,
+    axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
     return _reduce(x, jl.minimum, axis)
@@ -615,7 +689,7 @@ def any(
     x: Tensor,
     /,
     *,
-    axis: Union[int, tuple[int, ...], None] = None,
+    axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
     return _reduce(x, jl.any, axis)
@@ -625,7 +699,7 @@ def all(
     x: Tensor,
     /,
     *,
-    axis: Union[int, tuple[int, ...], None] = None,
+    axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
     return _reduce(x, jl.all, axis)
@@ -633,11 +707,11 @@ def all(
 
 def eye(
     n_rows: int,
-    n_cols: Optional[int] = None,
+    n_cols: int | None = None,
     /,
     *,
     k: int = 0,
-    dtype: Optional[DType] = None,
+    dtype: DType | None = None,
     format: Literal["coo", "dense"] = "coo",
 ) -> Tensor:
     n_cols = n_rows if n_cols is None else n_cols
@@ -671,34 +745,6 @@ def tensordot(x1: Tensor, x2: Tensor, /, *, axes=2) -> Tensor:
 
     result = jl.tensordot(x1._obj, x2._obj, axes)
     return Tensor(result)
-
-
-def matmul(x1: Tensor, x2: Tensor) -> Tensor:
-    return x1 @ x2
-
-
-def add(x1: Tensor, x2: Tensor, /) -> Tensor:
-    return x1 + x2
-
-
-def subtract(x1: Tensor, x2: Tensor, /) -> Tensor:
-    return x1 - x2
-
-
-def multiply(x1: Tensor, x2: Tensor, /) -> Tensor:
-    return x1 * x2
-
-
-def divide(x1: Tensor, x2: Tensor, /) -> Tensor:
-    return x1 / x2
-
-
-def floor_divide(x1: Tensor, x2: Tensor, /) -> Tensor:
-    return x1 // x2
-
-
-def pow(x1: Tensor, x2: Tensor, /) -> Tensor:
-    return x1 ** x2
 
 
 def log(x: Tensor, /) -> Tensor:
@@ -743,18 +789,6 @@ def floor(x: Tensor, /) -> Tensor:
 
 def ceil(x: Tensor, /) -> Tensor:
     return x._elemwise_op("ceil")
-
-
-def positive(x: Tensor, /) -> Tensor:
-    return +x
-
-
-def negative(x: Tensor, /) -> Tensor:
-    return -x
-
-
-def abs(x: Tensor, /) -> Tensor:
-    return x.__abs__()
 
 
 def cos(x: Tensor, /) -> Tensor:
