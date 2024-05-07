@@ -883,7 +883,7 @@ def _add_plus_one(key: tuple, shape: tuple[int, ...]) -> tuple:
             idx = normalize_axis_tuple(idx, size)
             new_key += (jl.Vector([i + 1 for i in idx]),)
         elif idx is None:
-            raise IndexError("'None' in the index is supported only in lazy indexing")
+            raise IndexError("`None` in the index is supported only in lazy indexing")
         else:
             new_key += (idx,)
     return new_key

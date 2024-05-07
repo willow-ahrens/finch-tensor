@@ -59,8 +59,10 @@ def test_indexing_2d(arr2d, index, order):
         (slice(None, -1, 1), slice(-1, None, -1), slice(4, 1, -1)),
         (-1, 0, 0), (0, -1, -2), ([1, 2], 0, slice(3, None, -1)),
         (0, slice(1, 0, -1), 0), (slice(None), None, slice(None), slice(None)),
-        # https://github.com/willow-ahrens/Finch.jl/issues/528
-        # (slice(None), slice(None), slice(None), None),
+        pytest.param(
+            (slice(None), slice(None), slice(None), None),
+            marks=pytest.mark.xfail(reason="https://github.com/willow-ahrens/Finch.jl/issues/528"),
+        ),
     ]
 )
 @pytest.mark.parametrize(
