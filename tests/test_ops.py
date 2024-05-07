@@ -19,6 +19,7 @@ def test_eager(arr3d):
     assert_equal(result.todense(), np.multiply(arr3d, arr2d))
 
 
+@pytest.mark.xfail(reason="https://github.com/willow-ahrens/Finch.jl/issues/524")
 def test_lazy_mode(arr3d):
     A_finch = finch.Tensor(arr3d)
     B_finch = finch.Tensor(arr2d)

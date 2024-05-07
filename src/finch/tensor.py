@@ -197,9 +197,15 @@ class Tensor(_Display, SparseArray):
     def __getitem__(self, key):
         if not isinstance(key, tuple):
             key = (key,)
-        key = _expand_ellipsis(key, self.shape)
-        key = _add_missing_dims(key, self.shape)
-        key = _add_plus_one(key, self.shape)
+
+        if None in key:
+            # lazy indexing mode
+            key = _process_lazy_indexing(key)
+        else:
+            # standard indexing mode
+            key = _expand_ellipsis(key, self.shape)
+            key = _add_missing_dims(key, self.shape)
+            key = _add_plus_one(key, self.shape)
 
         result = self._obj[key]
         if jl.isa(result, jl.Finch.SwizzleArray) or jl.isa(result, jl.Finch.LazyTensor):
@@ -877,7 +883,7 @@ def _add_plus_one(key: tuple, shape: tuple[int, ...]) -> tuple:
             idx = normalize_axis_tuple(idx, size)
             new_key += (jl.Vector([i + 1 for i in idx]),)
         elif idx is None:
-            raise IndexError("'None' in the index key isn't supported")
+            raise IndexError("`None` in the index is supported only in lazy indexing")
         else:
             new_key += (idx,)
     return new_key
@@ -911,7 +917,20 @@ def _expand_ellipsis(key: tuple, shape: tuple[int, ...]) -> tuple:
         key = new_key
     return key
 
+
 def _add_missing_dims(key: tuple, shape: tuple[int, ...]) -> tuple:
     for i in range(len(key), len(shape)):
         key = key + (jl.range(start=1, stop=shape[i]),)
     return key
+
+
+def _process_lazy_indexing(key: tuple) -> tuple:
+    new_key = ()
+    for idx in key:
+        if idx == slice(None):
+            new_key += (jl.Colon(),)
+        elif idx is None:
+            new_key += (jl.nothing,)
+        else:
+            raise ValueError(f"Invalid lazy index member: {idx}")
+    return new_key

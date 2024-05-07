@@ -28,7 +28,7 @@ def lazy(tensor: Tensor):
     return tensor
 
 
-def compute(tensor: Tensor):
+def compute(tensor: Tensor, *, verbose: bool = False):
     if not tensor.is_computed():
-        return Tensor(jl.Finch.compute(tensor._obj))
+        return Tensor(jl.Finch.compute(tensor._obj, verbose=verbose))
     return tensor
