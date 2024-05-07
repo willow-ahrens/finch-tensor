@@ -1,12 +1,17 @@
 import numpy as np
 from numpy.testing import assert_equal
 import pytest
+import juliacall as jc
 
 import finch
 
 
 @pytest.mark.parametrize(
-    "index", [..., 40, (32,), slice(None), slice(30, 60, 3), -10, slice(None, -10, -2)]
+    "index",
+    [
+        ..., 40, (32,), slice(None), slice(30, 60, 3), -10,
+        slice(None, -10, -2), (None, slice(None)),
+    ]
 )
 @pytest.mark.parametrize("order", ["C", "F"])
 def test_indexing_1d(arr1d, index, order):
@@ -23,7 +28,11 @@ def test_indexing_1d(arr1d, index, order):
 
 
 @pytest.mark.parametrize(
-    "index", [..., 0, (2,), (2, 3), slice(None), (..., slice(0, 4, 2)), (-1, slice(-1, None, -1))]
+    "index",
+    [
+        ..., 0, (2,), (2, 3), slice(None), (..., slice(0, 4, 2)),
+        (-1, slice(-1, None, -1)), (None, slice(None), slice(None)),
+    ]
 )
 @pytest.mark.parametrize("order", ["C", "F"])
 def test_indexing_2d(arr2d, index, order):
@@ -49,7 +58,9 @@ def test_indexing_2d(arr2d, index, order):
         (slice(None, None, -1), slice(None, None, -1), slice(None, None, -1)),
         (slice(None, -1, 1), slice(-1, None, -1), slice(4, 1, -1)),
         (-1, 0, 0), (0, -1, -2), ([1, 2], 0, slice(3, None, -1)),
-        (0, slice(1, 0, -1), 0),
+        (0, slice(1, 0, -1), 0), (slice(None), None, slice(None), slice(None)),
+        # https://github.com/willow-ahrens/Finch.jl/issues/528
+        # (slice(None), slice(None), slice(None), None),
     ]
 )
 @pytest.mark.parametrize(
@@ -73,8 +84,14 @@ def test_indexing_3d(arr3d, index, levels_descr, order):
     assert_equal(actual, expected)
 
 
-def test_index_none(arr3d):
+def test_invalid_index_none(arr3d):
     arr_finch = finch.Tensor(arr3d)
 
-    with pytest.raises(IndexError, match="'None' in the index key isn't supported"):
+    with pytest.raises(ValueError, match="Invalid lazy index member: Ellipsis"):
         arr_finch[..., None]
+
+    with pytest.raises(
+        jc.JuliaError,
+        match="Cannot index a lazy tensor with more or fewer `:` dims than it had original dims.",
+    ):
+        arr_finch[None, :]
