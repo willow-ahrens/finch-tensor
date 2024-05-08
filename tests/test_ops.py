@@ -19,7 +19,6 @@ def test_eager(arr3d):
     assert_equal(result.todense(), np.multiply(arr3d, arr2d))
 
 
-@pytest.mark.xfail(reason="https://github.com/willow-ahrens/Finch.jl/issues/524")
 def test_lazy_mode(arr3d):
     A_finch = finch.Tensor(arr3d)
     B_finch = finch.Tensor(arr2d)
@@ -47,7 +46,20 @@ def test_lazy_mode(arr3d):
 
 
 @pytest.mark.parametrize(
-    "func_name", ["log", "log10", "log1p", "log2", "sqrt", "sign", "round", "exp", "expm1", "floor", "ceil"],
+    "func_name",
+    [
+        "log",
+        "log10",
+        "log1p",
+        "log2",
+        "sqrt",
+        "sign",
+        "round",
+        "exp",
+        "expm1",
+        "floor",
+        "ceil",
+    ],
 )
 def test_elemwise_ops_1_arg(arr3d, func_name):
     arr = arr3d + 1.6
@@ -60,7 +72,8 @@ def test_elemwise_ops_1_arg(arr3d, func_name):
 
 
 @pytest.mark.parametrize(
-    "meth_name", ["__pos__", "__neg__", "__abs__", "__invert__"],
+    "meth_name",
+    ["__pos__", "__neg__", "__abs__", "__invert__"],
 )
 def test_elemwise_tensor_ops_1_arg(arr3d, meth_name):
     A_finch = finch.Tensor(arr3d)
@@ -73,9 +86,24 @@ def test_elemwise_tensor_ops_1_arg(arr3d, meth_name):
 
 @pytest.mark.parametrize(
     "meth_name",
-    ["__add__", "__mul__", "__sub__", "__truediv__", # "__floordiv__", "__mod__",
-     "__pow__", "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
-     "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"],
+    [
+        "__add__",
+        "__mul__",
+        "__sub__",
+        "__truediv__",  # "__floordiv__", "__mod__",
+        "__pow__",
+        "__and__",
+        "__or__",
+        "__xor__",
+        "__lshift__",
+        "__rshift__",
+        "__lt__",
+        "__le__",
+        "__gt__",
+        "__ge__",
+        "__eq__",
+        "__ne__",
+    ],
 )
 def test_elemwise_tensor_ops_2_args(arr3d, meth_name):
     arr2d = np.array([[2, 3, 2, 3], [3, 2, 3, 2]])
@@ -111,13 +139,17 @@ def test_reductions(arr3d, func_name, axis, dtype):
         None,
         (
             finch.Storage(finch.SparseList(finch.Element(np.int64(0))), order="C"),
-            finch.Storage(finch.Dense(finch.SparseList(finch.Element(np.int64(0)))), order="C"),
             finch.Storage(
-                finch.Dense(finch.SparseList(finch.SparseList(finch.Element(np.int64(0))))),
+                finch.Dense(finch.SparseList(finch.Element(np.int64(0)))), order="C"
+            ),
+            finch.Storage(
+                finch.Dense(
+                    finch.SparseList(finch.SparseList(finch.Element(np.int64(0))))
+                ),
                 order="C",
             ),
-        )
-    ]
+        ),
+    ],
 )
 def test_tensordot(arr3d, storage):
     A_finch = finch.Tensor(arr1d)
@@ -136,7 +168,9 @@ def test_tensordot(arr3d, storage):
     expected = np.tensordot(arr2d, arr2d, axes=(1, 1))
     assert_equal(actual.todense(), expected)
 
-    actual = finch.tensordot(C_finch, finch.permute_dims(C_finch, (2, 1, 0)), axes=((2, 0), (0, 2)))
+    actual = finch.tensordot(
+        C_finch, finch.permute_dims(C_finch, (2, 1, 0)), axes=((2, 0), (0, 2))
+    )
     expected = np.tensordot(arr3d, arr3d.T, axes=((2, 0), (0, 2)))
     assert_equal(actual.todense(), expected)
 
