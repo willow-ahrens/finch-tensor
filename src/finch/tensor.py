@@ -115,25 +115,25 @@ class Tensor(_Display, SparseArray):
         return self._elemwise_op("-")
 
     def __add__(self, other):
-        return self._elemwise_op(".+", other)
+        return self._elemwise_op("+", other)
 
     def __mul__(self, other):
-        return self._elemwise_op(".*", other)
+        return self._elemwise_op("*", other)
 
     def __sub__(self, other):
-        return self._elemwise_op(".-", other)
+        return self._elemwise_op("-", other)
 
     def __truediv__(self, other):
-        return self._elemwise_op("./", other)
+        return self._elemwise_op("/", other)
 
     def __floordiv__(self, other):
-        return self._elemwise_op(".//", other)
+        return self._elemwise_op("//", other)
 
     def __mod__(self, other):
         return self._elemwise_op("rem", other)
 
     def __pow__(self, other):
-        return self._elemwise_op(".^", other)
+        return self._elemwise_op("^", other)
 
     def __matmul__(self, other):
         # TODO: Implement and use mul instead of tensordot
@@ -148,40 +148,40 @@ class Tensor(_Display, SparseArray):
         return self._elemwise_op("abs")
 
     def __invert__(self):
-        return self._elemwise_op(".~")
+        return self._elemwise_op("~")
 
     def __and__(self, other):
-        return self._elemwise_op(".&", other)
+        return self._elemwise_op("&", other)
 
     def __or__(self, other):
-        return self._elemwise_op(".|", other)
+        return self._elemwise_op("|", other)
 
     def __xor__(self, other):
         return self._elemwise_op("xor", other)
 
     def __lshift__(self, other):
-        return self._elemwise_op(".<<", other)
+        return self._elemwise_op("<<", other)
 
     def __rshift__(self, other):
-        return self._elemwise_op(".>>", other)
+        return self._elemwise_op(">>", other)
 
     def __lt__(self, other):
-        return self._elemwise_op(".<", other)
+        return self._elemwise_op("<", other)
 
     def __le__(self, other):
-        return self._elemwise_op(".<=", other)
+        return self._elemwise_op("<=", other)
 
     def __gt__(self, other):
-        return self._elemwise_op(".>", other)
+        return self._elemwise_op(">", other)
 
     def __ge__(self, other):
-        return self._elemwise_op(".>=", other)
+        return self._elemwise_op(">=", other)
 
     def __eq__(self, other):
-        return self._elemwise_op(".==", other)
+        return self._elemwise_op("==", other)
 
     def __ne__(self, other):
-        return self._elemwise_op(".!=", other)
+        return self._elemwise_op("!=", other)
 
     def _elemwise_op(self, op: str, other: Optional["Tensor"] = None) -> "Tensor":
         if other is None:
