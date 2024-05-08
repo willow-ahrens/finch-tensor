@@ -36,12 +36,13 @@ def test_scipy_compressed2d(arr2d, cls):
 
 
 @pytest.mark.parametrize(
-    "format_with_cls_with_order", [
+    "format_with_cls_with_order",
+    [
         ("coo", sp.coo_matrix, "C"),
         ("coo", sp.coo_matrix, "F"),
         ("csc", sp.csc_matrix, "F"),
         ("csr", sp.csr_matrix, "C"),
-    ]
+    ],
 )
 def test_to_scipy_sparse(format_with_cls_with_order):
     format, sp_class, order = format_with_cls_with_order
@@ -57,14 +58,16 @@ def test_to_scipy_sparse(format_with_cls_with_order):
 
 
 def test_to_scipy_sparse_invalid_input():
-    finch_arr = finch.asarray(np.ones((3,3,3)), format="dense")
+    finch_arr = finch.asarray(np.ones((3, 3, 3)), format="dense")
 
     with pytest.raises(ValueError, match="Can only convert a 2-dimensional array"):
         finch_arr.to_scipy_sparse()
 
-    finch_arr = finch.asarray(np.ones((3,4)), format="dense")
+    finch_arr = finch.asarray(np.ones((3, 4)), format="dense")
 
-    with pytest.raises(ValueError, match="Tensor can't be converted to scipy.sparse object"):
+    with pytest.raises(
+        ValueError, match="Tensor can't be converted to scipy.sparse object"
+    ):
         finch_arr.to_scipy_sparse()
 
 
@@ -75,7 +78,7 @@ def test_to_scipy_sparse_invalid_input():
         ("csr", "SparseList"),
         ("csc", "SparseList"),
         ("bsr", "SparseCOO"),
-        ("dok", "SparseCOO")
+        ("dok", "SparseCOO"),
     ],
 )
 def test_from_scipy_sparse(format_with_pattern):

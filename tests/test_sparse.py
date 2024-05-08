@@ -8,7 +8,11 @@ import finch
 
 @pytest.mark.parametrize(
     "dtype,jl_dtype",
-    [(np.int64, finch.int64), (np.float64, finch.float64), (np.complex128, finch.complex128)]
+    [
+        (np.int64, finch.int64),
+        (np.float64, finch.float64),
+        (np.complex128, finch.complex128),
+    ],
 )
 @pytest.mark.parametrize("order", ["C", "F", None])
 def test_wrappers(dtype, jl_dtype, order):
@@ -18,7 +22,8 @@ def test_wrappers(dtype, jl_dtype, order):
     B_finch = finch.Tensor(B)
 
     storage = finch.Storage(
-        finch.Dense(finch.SparseList(finch.SparseList(finch.Element(dtype(0.0))))), order=order
+        finch.Dense(finch.SparseList(finch.SparseList(finch.Element(dtype(0.0))))),
+        order=order,
     )
     B_finch = B_finch.to_device(storage)
 
@@ -65,8 +70,10 @@ def test_coo(rng):
 
 @pytest.mark.parametrize(
     "classes",
-    [(sparse._compressed.CSC, finch.Tensor.construct_csc),
-     (sparse._compressed.CSR, finch.Tensor.construct_csr)],
+    [
+        (sparse._compressed.CSC, finch.Tensor.construct_csc),
+        (sparse._compressed.CSR, finch.Tensor.construct_csr),
+    ],
 )
 def test_compressed2d(rng, classes):
     sparse_class, finch_class = classes
@@ -90,10 +97,13 @@ def test_csf(arr3d):
         np.array([0, 1, 0, 1, 0, 1], dtype=dtype),
     ]
     indptr_list = [
-        np.array([0, 1, 4, 5, 7, 8, 10], dtype=dtype), np.array([0, 2, 4, 5, 6], dtype=dtype)
+        np.array([0, 1, 4, 5, 7, 8, 10], dtype=dtype),
+        np.array([0, 2, 4, 5, 6], dtype=dtype),
     ]
 
-    arr_finch = finch.Tensor.construct_csf((data, indices_list, indptr_list), shape=(3, 2, 4))
+    arr_finch = finch.Tensor.construct_csf(
+        (data, indices_list, indptr_list), shape=(3, 2, 4)
+    )
 
     assert_equal(arr_finch.todense(), arr)
     assert arr_finch.todense().dtype == data.dtype
@@ -126,7 +136,8 @@ def test_permute_dims(arr3d, permutation, order):
 def test_astype(arr3d, order):
     arr = np.array(arr3d, order=order)
     storage = finch.Storage(
-        finch.Dense(finch.SparseList(finch.SparseList(finch.Element(np.int64(0))))), order=order
+        finch.Dense(finch.SparseList(finch.SparseList(finch.Element(np.int64(0))))),
+        order=order,
     )
     arr_finch = finch.Tensor(arr).to_device(storage)
 
@@ -141,7 +152,9 @@ def test_astype(arr3d, order):
     result = finch.astype(arr_finch, finch.float32)
     assert_equal(result.todense(), arr.astype(np.float32))
 
-    with pytest.raises(ValueError, match="Unable to avoid a copy while casting in no-copy mode."):
+    with pytest.raises(
+        ValueError, match="Unable to avoid a copy while casting in no-copy mode."
+    ):
         finch.astype(arr_finch, finch.float64, copy=False)
 
 
@@ -200,14 +213,16 @@ def test_full_ones_zeros(shape, dtype_name, format):
 
 @pytest.mark.parametrize(
     "order_and_format",
-    [("C", None), ("F", None), ("C", "coo"), ("F", "coo"),("F", "csc")],
+    [("C", None), ("F", None), ("C", "coo"), ("F", "coo"), ("F", "csc")],
 )
 def test_where(order_and_format):
     order, format = order_and_format
     cond = np.array(
-        [[True, False, False, False],
-         [False, True, True, False],
-         [True, False, True, True]],
+        [
+            [True, False, False, False],
+            [False, True, True, False],
+            [True, False, True, True],
+        ],
         order=order,
     )
     arr1 = np.array([[0, 0, 0, 1], [0, 2, 0, 3], [1, 0, 0, 5]], order=order)
@@ -226,7 +241,13 @@ def test_where(order_and_format):
 @pytest.mark.parametrize("order", ["C", "F"])
 @pytest.mark.parametrize(
     "format_shape",
-    [("coo", (80,)), ("coo", (10, 5, 8)), ("csf", (10, 5, 8)), ("csr", (5, 10)), ("csc", (5, 10))],
+    [
+        ("coo", (80,)),
+        ("coo", (10, 5, 8)),
+        ("csf", (10, 5, 8)),
+        ("csr", (5, 10)),
+        ("csc", (5, 10)),
+    ],
 )
 def test_nonzero(order, format_shape):
     format, shape = format_shape
