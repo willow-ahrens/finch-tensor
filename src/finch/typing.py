@@ -3,7 +3,6 @@ from typing import Any, Literal, Union
 import juliacall as jc
 import numpy as np
 
-from .julia import jl
 
 OrderType = Union[Literal["C", "F"], tuple[int, ...], None]
 

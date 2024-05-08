@@ -14,7 +14,7 @@ from operator import (
     or_ as bitwise_or,
     and_ as bitwise_and,
     lshift as bitwise_left_shift,
-    rshift as bitwise_right_shift
+    rshift as bitwise_right_shift,
 )
 
 from .levels import (

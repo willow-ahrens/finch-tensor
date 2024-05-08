@@ -74,6 +74,7 @@ class Tensor(_Display, SparseArray):
     array([[0, 1, 2],
            [3, 4, 5]])
     """
+
     row_major: str = "C"
     column_major: str = "F"
 
@@ -94,7 +95,9 @@ class Tensor(_Display, SparseArray):
             jl_data = self._from_numpy(obj, fill_value=fill_value)
             self._obj = jl_data
         elif isinstance(obj, Storage):  # from-storage constructor
-            order = self.preprocess_order(obj.order, self.get_lvl_ndim(obj.levels_descr._obj))
+            order = self.preprocess_order(
+                obj.order, self.get_lvl_ndim(obj.levels_descr._obj)
+            )
             self._obj = jl.swizzle(jl.Tensor(obj.levels_descr._obj), *order)
         elif jl.isa(obj, jl.Finch.Tensor):  # raw-Julia-object constructors
             self._obj = jl.swizzle(obj, *tuple(range(1, jl.ndims(obj) + 1)))
@@ -136,7 +139,9 @@ class Tensor(_Display, SparseArray):
         # TODO: Implement and use mul instead of tensordot
         # https://github.com/willow-ahrens/finch-tensor/pull/22#issuecomment-2007884763
         if self.ndim != 2 or other.ndim != 2:
-            raise ValueError(f"Both tensors must be 2-dimensional, but are: {self.ndim=} and {other.ndim=}.")
+            raise ValueError(
+                f"Both tensors must be 2-dimensional, but are: {self.ndim=} and {other.ndim=}."
+            )
         return tensordot(self, other, axes=((-1,), (-2,)))
 
     def __abs__(self):
@@ -185,7 +190,7 @@ class Tensor(_Display, SparseArray):
             axis_x1, axis_x2 = range(self.ndim, 0, -1), range(other.ndim, 0, -1)
             # inverse swizzle, so `broadcast` appends new dims to the front
             result = jl.broadcast(
-                jl.seval(op), 
+                jl.seval(op),
                 jl.permutedims(self._obj, tuple(axis_x1)),
                 jl.permutedims(other._obj, tuple(axis_x2)),
             )
@@ -252,9 +257,7 @@ class Tensor(_Display, SparseArray):
         return not jl.isa(self._obj, jl.Finch.LazyTensor)
 
     @classmethod
-    def preprocess_order(
-        cls, order: OrderType, ndim: int
-    ) -> tuple[int, ...]:
+    def preprocess_order(cls, order: OrderType, ndim: int) -> tuple[int, ...]:
         if order == cls.column_major:
             permutation = tuple(range(1, ndim + 1))
         elif order == cls.row_major or order is None:
@@ -262,15 +265,16 @@ class Tensor(_Display, SparseArray):
         elif isinstance(order, tuple):
             if builtins.min(order) == 0:
                 order = tuple(i + 1 for i in order)
-            if (
-                len(order) == ndim and
-                builtins.all([i in order for i in range(1, ndim + 1)])
+            if len(order) == ndim and builtins.all(
+                [i in order for i in range(1, ndim + 1)]
             ):
                 permutation = order
             else:
                 raise ValueError(f"Custom order is not a permutation: {order}.")
         else:
-            raise ValueError(f"order must be 'C', 'F' or a tuple, but is: {type(order)}.")
+            raise ValueError(
+                f"order must be 'C', 'F' or a tuple, but is: {type(order)}."
+            )
 
         return permutation
 
@@ -340,7 +344,9 @@ class Tensor(_Display, SparseArray):
         inv_order = tuple(i - 1 for i in jl.invperm(order))
 
         dtype = arr.dtype.type
-        if dtype == np.bool_:  # Fails with: Finch currently only supports isbits defaults
+        if (
+            dtype == np.bool_
+        ):  # Fails with: Finch currently only supports isbits defaults
             dtype = jl_dtypes.bool
         lvl = Element(dtype(fill_value), arr.reshape(-1, order=order_char))
         for i in inv_order:
@@ -359,7 +365,10 @@ class Tensor(_Display, SparseArray):
     def _from_scipy_sparse(cls, x) -> JuliaObj:
         if x.format == "coo":
             return cls.construct_coo_jl_object(
-                coords=(x.col, x.row), data=x.data, shape=x.shape[::-1], order=Tensor.row_major
+                coords=(x.col, x.row),
+                data=x.data,
+                shape=x.shape[::-1],
+                order=Tensor.row_major,
             )
         elif x.format == "csc":
             return cls.construct_csc_jl_object(
@@ -375,7 +384,9 @@ class Tensor(_Display, SparseArray):
             raise ValueError(f"Unsupported SciPy format: {type(x)}")
 
     @classmethod
-    def construct_coo_jl_object(cls, coords, data, shape, order, fill_value=0.0) -> JuliaObj:
+    def construct_coo_jl_object(
+        cls, coords, data, shape, order, fill_value=0.0
+    ) -> JuliaObj:
         assert len(coords) == 2
         ndim = len(shape)
         order = cls.preprocess_order(order, ndim)
@@ -384,12 +395,18 @@ class Tensor(_Display, SparseArray):
         ptr = jl.Vector[jl.Int]([1, len(data) + 1])
         tbl = tuple(jl.PlusOneVector(arr) for arr in coords)
 
-        jl_data = jl.swizzle(jl.Tensor(jl.SparseCOO[ndim](lvl, shape, ptr, tbl)), *order)
+        jl_data = jl.swizzle(
+            jl.Tensor(jl.SparseCOO[ndim](lvl, shape, ptr, tbl)), *order
+        )
         return jl_data
 
     @classmethod
-    def construct_coo(cls, coords, data, shape, order=row_major, fill_value=0.0) -> "Tensor":
-        return Tensor(cls.construct_coo_jl_object(coords, data, shape, order, fill_value))
+    def construct_coo(
+        cls, coords, data, shape, order=row_major, fill_value=0.0
+    ) -> "Tensor":
+        return Tensor(
+            cls.construct_coo_jl_object(coords, data, shape, order, fill_value)
+        )
 
     @staticmethod
     def _construct_compressed2d_jl_object(
@@ -408,22 +425,27 @@ class Tensor(_Display, SparseArray):
 
         lvl = jl.Element(dtype(fill_value), data)
         jl_data = jl.swizzle(
-            jl.Tensor(jl.Dense(jl.SparseList(lvl, shape[0], indptr, indices), shape[1])), *order
+            jl.Tensor(
+                jl.Dense(jl.SparseList(lvl, shape[0], indptr, indices), shape[1])
+            ),
+            *order,
         )
         return jl_data
 
     @classmethod
-    def construct_csc_jl_object(cls, arg: TupleOf3Arrays, shape: tuple[int, ...]) -> JuliaObj:
-        return cls._construct_compressed2d_jl_object(
-            arg=arg, shape=shape, order=(1, 2)
-        )
+    def construct_csc_jl_object(
+        cls, arg: TupleOf3Arrays, shape: tuple[int, ...]
+    ) -> JuliaObj:
+        return cls._construct_compressed2d_jl_object(arg=arg, shape=shape, order=(1, 2))
 
     @classmethod
     def construct_csc(cls, arg: TupleOf3Arrays, shape: tuple[int, ...]) -> "Tensor":
         return Tensor(cls.construct_csc_jl_object(arg, shape))
 
     @classmethod
-    def construct_csr_jl_object(cls, arg: TupleOf3Arrays, shape: tuple[int, ...]) -> JuliaObj:
+    def construct_csr_jl_object(
+        cls, arg: TupleOf3Arrays, shape: tuple[int, ...]
+    ) -> JuliaObj:
         return cls._construct_compressed2d_jl_object(
             arg=arg, shape=shape[::-1], order=(2, 1)
         )
@@ -451,7 +473,9 @@ class Tensor(_Display, SparseArray):
         for size, indices, indptr in zip(shape[:-1], indices_list, indptr_list):
             lvl = jl.SparseList(lvl, size, indptr, indices)
 
-        jl_data = jl.swizzle(jl.Tensor(jl.Dense(lvl, shape[-1])), *range(1, len(shape) + 1))
+        jl_data = jl.swizzle(
+            jl.Tensor(jl.Dense(lvl, shape[-1])), *range(1, len(shape) + 1)
+        )
         return jl_data
 
     @classmethod
@@ -462,9 +486,13 @@ class Tensor(_Display, SparseArray):
         import scipy.sparse as sp
 
         if self.ndim != 2:
-            raise ValueError("Can only convert a 2-dimensional array to a Scipy sparse matrix.")
+            raise ValueError(
+                "Can only convert a 2-dimensional array to a Scipy sparse matrix."
+            )
         if self.fill_value != 0:
-            raise ValueError("Can only convert arrays with 0 fill value to a Scipy sparse matrix.")
+            raise ValueError(
+                "Can only convert arrays with 0 fill value to a Scipy sparse matrix."
+            )
         order = self.get_order()
         body = self._obj.body
 
@@ -476,8 +504,8 @@ class Tensor(_Display, SparseArray):
             return sp.coo_matrix((data, (row, col)), shape=self.shape)
 
         if (
-            str(jl.typeof(body.lvl).name.name) == "DenseLevel" and
-            str(jl.typeof(body.lvl.lvl).name.name) == "SparseListLevel"
+            str(jl.typeof(body.lvl).name.name) == "DenseLevel"
+            and str(jl.typeof(body.lvl.lvl).name.name) == "SparseListLevel"
         ):
             data = np.asarray(body.lvl.lvl.lvl.val)
             indices = np.asarray(body.lvl.lvl.idx) - 1
@@ -485,8 +513,8 @@ class Tensor(_Display, SparseArray):
             sp_class = sp.csr_matrix if order == (1, 0) else sp.csc_matrix
             return sp_class((data, indices, indptr), shape=self.shape)
         if (
-            jl.typeof(body.lvl).name.name in sparse_formats_names or
-            jl.typeof(body.lvl.lvl).name.name in sparse_formats_names
+            jl.typeof(body.lvl).name.name in sparse_formats_names
+            or jl.typeof(body.lvl.lvl).name.name in sparse_formats_names
         ):
             storage = Storage(SparseCOO(self.ndim, Element(self.fill_value)), order)
             return self.to_device(storage).to_scipy_sparse()
@@ -562,7 +590,9 @@ def full(
         fill_value = dtype(fill_value)
 
     if format == "coo":
-        return Tensor(jl.Tensor(jl.SparseCOO[len(shape)](jl.Element(fill_value)), *shape))
+        return Tensor(
+            jl.Tensor(jl.SparseCOO[len(shape)](jl.Element(fill_value)), *shape)
+        )
     if format == "dense":
         return Tensor(np.full(shape, fill_value, dtype=jl_dtypes.jl_to_np_dtype[dtype]))
     raise ValueError(f"{format} format not supported.")
@@ -574,24 +604,32 @@ def full_like(
     fill_value: jl_dtypes.number,
     *,
     dtype: DType | None = None,
-    format: str = "coo"
+    format: str = "coo",
 ) -> Tensor:
     return full(x.shape, fill_value, dtype=dtype, format=format)
 
 
-def ones(shape: int | tuple[int, ...], *, dtype: DType | None = None, format: str = "coo") -> Tensor:
+def ones(
+    shape: int | tuple[int, ...], *, dtype: DType | None = None, format: str = "coo"
+) -> Tensor:
     return full(shape, jl_dtypes.int64(1), dtype=dtype, format=format)
 
 
-def ones_like(x: Tensor, /, *, dtype: DType | None = None, format: str = "coo") -> Tensor:
+def ones_like(
+    x: Tensor, /, *, dtype: DType | None = None, format: str = "coo"
+) -> Tensor:
     return ones(x.shape, dtype=dtype, format=format)
 
 
-def zeros(shape: int | tuple[int, ...], *, dtype: DType | None = None, format: str = "coo") -> Tensor:
+def zeros(
+    shape: int | tuple[int, ...], *, dtype: DType | None = None, format: str = "coo"
+) -> Tensor:
     return full(shape, jl_dtypes.int64(0), dtype=dtype, format=format)
 
 
-def zeros_like(x: Tensor, /, *, dtype: DType | None = None, format: str = "coo") -> Tensor:
+def zeros_like(
+    x: Tensor, /, *, dtype: DType | None = None, format: str = "coo"
+) -> Tensor:
     return zeros(x.shape, dtype=dtype, format=format)
 
 
@@ -614,7 +652,11 @@ def astype(x: Tensor, dtype: DType, /, *, copy: bool = True):
 
 
 def where(condition: Tensor, x1: Tensor, x2: Tensor, /) -> Tensor:
-    axis_cond, axis_x1, axis_x2 = range(condition.ndim, 0, -1), range(x1.ndim, 0, -1), range(x2.ndim, 0, -1)
+    axis_cond, axis_x1, axis_x2 = (
+        range(condition.ndim, 0, -1),
+        range(x1.ndim, 0, -1),
+        range(x2.ndim, 0, -1),
+    )
     # inverse swizzle, so `broadcast` appends new dims to the front
     result = jl.broadcast(
         jl.ifelse,
@@ -634,7 +676,7 @@ def nonzero(x: Tensor, /) -> tuple[np.ndarray, ...]:
     return tuple(i[sort_order] for i in indices)
 
 
-def _reduce(x: Tensor, fn: Callable, axis, dtype = None):
+def _reduce(x: Tensor, fn: Callable, axis, dtype=None):
     if axis is not None:
         axis = normalize_axis_tuple(axis, x.ndim)
         axis = tuple(i + 1 for i in axis)
@@ -865,7 +907,9 @@ def _slice_plus_one(s: slice, size: int) -> range:
 
     if s.stop is not None:
         stop_offset = 2 if step < 0 else 0
-        stop = normalize_axis_index(s.stop, size) + stop_offset if s.stop < size else size
+        stop = (
+            normalize_axis_index(s.stop, size) + stop_offset if s.stop < size else size
+        )
     else:
         stop = stop_default
 

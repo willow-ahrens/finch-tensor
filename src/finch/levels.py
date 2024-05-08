@@ -1,5 +1,3 @@
-import numpy as np
-
 from .julia import jl
 from .typing import OrderType, DType
 
@@ -14,11 +12,13 @@ class _Display:
 
 # LEVEL
 
+
 class AbstractLevel(_Display):
     pass
 
 
 # core levels
+
 
 class Dense(AbstractLevel):
     def __init__(self, lvl, shape=None):
@@ -42,6 +42,7 @@ class Pattern(AbstractLevel):
 
 
 # advanced levels
+
 
 class SparseList(AbstractLevel):
     def __init__(self, lvl):
@@ -87,6 +88,7 @@ sparse_formats_names = (
 
 
 # STORAGE
+
 
 class Storage:
     def __init__(self, levels_descr: AbstractLevel, order: OrderType = None):
