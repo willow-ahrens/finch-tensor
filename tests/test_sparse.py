@@ -121,15 +121,23 @@ def test_permute_dims(arr3d, permutation, order):
 
     arr_finch = finch.Tensor(arr).to_device(storage)
 
-    actual = finch.permute_dims(arr_finch, permutation)
+    actual_eager_mode = finch.permute_dims(arr_finch, permutation)
+    actual_lazy_mode = finch.compute(
+        finch.permute_dims(finch.lazy(arr_finch), permutation)
+    )
     expected = np.transpose(arr, permutation)
 
-    assert_equal(actual.todense(), expected)
+    assert_equal(actual_eager_mode.todense(), expected)
+    assert_equal(actual_lazy_mode.todense(), expected)
 
-    actual = finch.permute_dims(actual, permutation)
+    actual_eager_mode = finch.permute_dims(actual_eager_mode, permutation)
+    actual_lazy_mode = finch.compute(
+        finch.permute_dims(finch.lazy(actual_lazy_mode), permutation)
+    )
     expected = np.transpose(expected, permutation)
 
-    assert_equal(actual.todense(), expected)
+    assert_equal(actual_eager_mode.todense(), expected)
+    assert_equal(actual_lazy_mode.todense(), expected)
 
 
 @pytest.mark.parametrize("order", ["C", "F"])
