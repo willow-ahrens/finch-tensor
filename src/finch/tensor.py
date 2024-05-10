@@ -1,5 +1,6 @@
 import builtins
 from typing import Any, Callable, Optional, Iterable, Literal
+import warnings
 
 import numpy as np
 from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
@@ -357,12 +358,21 @@ class Tensor(_Display, SparseArray):
     def from_scipy_sparse(cls, x) -> "Tensor":
         if not _is_scipy_sparse_obj(x):
             raise ValueError("{x} is not a SciPy sparse object.")
-        if x.format not in ("coo", "csr", "csc"):
-            x = x.asformat("coo")
         return Tensor(x)
 
     @classmethod
     def _from_scipy_sparse(cls, x) -> JuliaObj:
+        if x.format not in ("coo", "csr", "csc"):
+            x = x.asformat("coo")
+        if not x.has_canonical_format:
+            warnings.warn(
+                "SciPy sparse input must be in a canonical format. "
+                "Calling `sum_duplicates`."
+            )
+            x = x.copy()
+            x.sum_duplicates()
+            assert x.has_canonical_format
+
         if x.format == "coo":
             return cls.construct_coo_jl_object(
                 coords=(x.col, x.row),

@@ -87,3 +87,15 @@ def test_from_scipy_sparse(format_with_pattern):
 
     result = finch.Tensor.from_scipy_sparse(sp_arr)
     assert pattern in str(result)
+
+
+@pytest.mark.parametrize("format", ["coo", "bsr"])
+def test_non_canonical_format(format):
+    sp_arr = sp.random(3, 4, density=0.5, format=format)
+
+    with pytest.warns(
+        UserWarning, match="SciPy sparse input must be in a canonical format."
+    ):
+        finch_arr = finch.asarray(sp_arr)
+
+    assert_equal(finch_arr.todense(), sp_arr.toarray())
