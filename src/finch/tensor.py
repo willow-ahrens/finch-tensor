@@ -324,7 +324,7 @@ class Tensor(_Display, SparseArray):
 
     def permute_dims(self, axes: tuple[int, ...]) -> "Tensor":
         axes = tuple(i + 1 for i in axes)
-        new_obj = jl.swizzle(self._obj, *axes)
+        new_obj = jl.permutedims(self._obj, axes)
         new_tensor = Tensor(new_obj)
         return new_tensor
 
