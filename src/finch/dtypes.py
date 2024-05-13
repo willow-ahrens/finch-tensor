@@ -1,3 +1,5 @@
+import builtins
+
 import numpy as np
 
 from .julia import jl
@@ -31,6 +33,7 @@ jl_to_np_dtype = {
     int16: np.int16,
     int32: np.int32,
     int64: np.int64,
+    uint: np.uint,
     uint8: np.uint8,
     uint16: np.uint16,
     uint32: np.uint32,
@@ -40,6 +43,17 @@ jl_to_np_dtype = {
     float64: np.float64,
     complex64: np.complex64,
     complex128: np.complex128,
-    bool: np.bool_,
+    bool: builtins.bool,
     None: None,
 }
+
+def finfo(dtype):
+    return np.finfo(jl_to_np_dtype[dtype])
+
+def iinfo(dtype):
+    return np.iinfo(jl_to_np_dtype[dtype])
+
+def can_cast(from_, to, /) -> builtins.bool:
+    if hasattr(from_, "dtype"):
+        from_ = from_.dtype
+    return np.can_cast(jl_to_np_dtype[from_], jl_to_np_dtype[to])
