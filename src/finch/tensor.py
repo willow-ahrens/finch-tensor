@@ -60,6 +60,16 @@ class Tensor(_Display):
     def __truediv__(self, other):
         return Tensor(jl_data=jl.Base.broadcast(jl.seval("/"), self._obj, other._obj))
 
+    def __floordiv__(self, other):
+        return Tensor(
+            jl_data=jl.Base.broadcast(jl.seval("Finch.warn_fld"), self._obj, other._obj)
+        )
+
+    def __mod__(self, other):
+        return Tensor(
+            jl_data=jl.Base.broadcast(jl.seval("Finch.warn_rem"), self._obj, other._obj)
+        )
+
     def todense(self) -> np.ndarray:
         shape = jl.size(self._obj)
 
