@@ -62,12 +62,16 @@ class Tensor(_Display):
 
     def __floordiv__(self, other):
         return Tensor(
-            jl_data=jl.Base.broadcast(jl.seval("Finch.warn_fld"), self._obj, other._obj)
+            jl_data=jl.Base.broadcast(
+                jl.seval("Finch.fld_nothrow"), self._obj, other._obj
+            )
         )
 
     def __mod__(self, other):
         return Tensor(
-            jl_data=jl.Base.broadcast(jl.seval("Finch.warn_rem"), self._obj, other._obj)
+            jl_data=jl.Base.broadcast(
+                jl.seval("Finch.rem_nothrow"), self._obj, other._obj
+            )
         )
 
     def todense(self) -> np.ndarray:
