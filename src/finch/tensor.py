@@ -131,7 +131,7 @@ class Tensor(_Display, SparseArray):
         return self._elemwise_op("Finch.fld_nothrow", other)
 
     def __mod__(self, other):
-        return self._elemwise_op("Finch.rem_nothrow", other)
+        return self._elemwise_op("Finch.rem_nothrow", other).__abs__()
 
     def __pow__(self, other):
         return self._elemwise_op("^", other)
