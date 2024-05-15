@@ -128,10 +128,10 @@ class Tensor(_Display, SparseArray):
         return self._elemwise_op("/", other)
 
     def __floordiv__(self, other):
-        return self._elemwise_op("//", other)
+        return self._elemwise_op("Finch.fld_nothrow", other)
 
     def __mod__(self, other):
-        return self._elemwise_op("rem", other)
+        return self._elemwise_op("Finch.rem_nothrow", other).__abs__()
 
     def __pow__(self, other):
         return self._elemwise_op("^", other)
