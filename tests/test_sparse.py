@@ -291,7 +291,7 @@ def test_nonzero(order, format_shape):
     actual = finch.nonzero(tns)
     expected = np.nonzero(arr)
     for actual_i, expected_i in zip(actual, expected):
-        assert_equal(actual_i, expected_i)
+        assert_equal(actual_i.todense(), expected_i)
 
 
 @pytest.mark.parametrize("dtype_name", ["int64", "float64", "complex128"])

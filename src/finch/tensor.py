@@ -723,7 +723,7 @@ def nonzero(x: Tensor, /) -> tuple[np.ndarray, ...]:
     indices = jl.ffindnz(x._obj)[:-1]  # return only indices, skip values
     indices = tuple(np.asarray(i) - 1 for i in indices)
     sort_order = np.lexsort(indices[::-1])  # sort to row-major, C-style order
-    return tuple(i[sort_order] for i in indices)
+    return tuple(Tensor(i[sort_order]) for i in indices)
 
 
 def _reduce(x: Tensor, fn: Callable, axis, dtype=None):
