@@ -6,6 +6,7 @@ import numpy as np
 from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
 
 from . import dtypes as jl_dtypes
+from .errors import PerformanceWarning
 from .julia import jl
 from .levels import (
     _Display,
@@ -86,7 +87,7 @@ class Tensor(_Display, SparseArray):
         *,
         fill_value: np.number = 0.0,
     ):
-        if isinstance(obj, (int, float, complex, bool)):
+        if isinstance(obj, (int, float, complex, bool, list)):
             obj = np.array(obj)
 
         if _is_scipy_sparse_obj(obj):  # scipy constructor
@@ -104,9 +105,12 @@ class Tensor(_Display, SparseArray):
             self._obj = jl.swizzle(obj, *tuple(range(1, jl.ndims(obj) + 1)))
         elif jl.isa(obj, jl.Finch.SwizzleArray) or jl.isa(obj, jl.Finch.LazyTensor):
             self._obj = obj
+        elif isinstance(obj, Tensor):
+            self._obj = obj._obj
         else:
             raise ValueError(
-                "Either `arr`, `storage` or a raw julia object should be provided."
+                "Either scalar, numpy, scipy.sparse or a raw julia object should "
+                f"be provided. Found: {type(obj)}"
             )
 
     def __pos__(self):
@@ -188,17 +192,36 @@ class Tensor(_Display, SparseArray):
         if other is None:
             result = jl.broadcast(jl.seval(op), self._obj)
         else:
-            axis_x1, axis_x2 = range(self.ndim, 0, -1), range(other.ndim, 0, -1)
+            if not np.isscalar(other):
+                other = jl.permutedims(other._obj, tuple(range(other.ndim, 0, -1)))
             # inverse swizzle, so `broadcast` appends new dims to the front
             result = jl.broadcast(
-                jl.seval(op),
-                jl.permutedims(self._obj, tuple(axis_x1)),
-                jl.permutedims(other._obj, tuple(axis_x2)),
+                jl.seval(op), jl.permutedims(self._obj, tuple(range(self.ndim, 0, -1))), other
             )
             # swizzle back to the original order
             result = jl.permutedims(result, tuple(range(jl.ndims(result), 0, -1)))
 
         return Tensor(result)
+
+    def __bool__(self):
+        return self._to_scalar(bool)
+
+    def __float__(self):
+        return self._to_scalar(float)
+
+    def __int__(self):
+        return self._to_scalar(int)
+
+    def __index__(self):
+        return self._to_scalar(int)
+
+    def __complex__(self):
+        return self._to_scalar(complex)
+
+    def _to_scalar(self, builtin):
+        if self.ndim != 0:
+            raise ValueError(f"{builtin} can be computed for one-element tensors only.")
+        return builtin(self.todense().flatten()[0])
 
     def __getitem__(self, key):
         if not isinstance(key, tuple):
@@ -349,7 +372,8 @@ class Tensor(_Display, SparseArray):
             dtype == np.bool_
         ):  # Fails with: Finch currently only supports isbits defaults
             dtype = jl_dtypes.bool
-        lvl = Element(dtype(fill_value), arr.reshape(-1, order=order_char))
+        fill_value = dtype(fill_value)
+        lvl = Element(fill_value, arr.reshape(-1, order=order_char))
         for i in inv_order:
             lvl = Dense(lvl, arr.shape[i])
         return jl.swizzle(jl.Tensor(lvl._obj), *order)
@@ -587,6 +611,16 @@ def asarray(obj, /, *, dtype=None, format=None):
         return tensor
 
 
+def reshape(x: Tensor, /, shape: tuple[int, ...], *, copy: bool | None = None) -> Tensor:
+    # TODO: https://github.com/willow-ahrens/Finch.jl/issues/558
+    #       Only to run array-api-tests that require it for multiple tests.
+    #       Must be reimplemented once `reshape` is available in Finch.jl.
+    warnings.warn("`reshape` densified the input tensor.", PerformanceWarning)
+    arr = x.todense()
+    arr = arr.reshape(shape)
+    return Tensor(arr)
+
+
 def full(
     shape: int | tuple[int, ...],
     fill_value: jl_dtypes.number,
@@ -594,18 +628,22 @@ def full(
     dtype: DType | None = None,
     format: str = "coo",
 ) -> Tensor:
+    if not np.isscalar(fill_value):
+        raise ValueError("`fill_value` must be a scalar")
+    if format not in ("coo", "dense"):
+        raise ValueError(f"{format} format not supported.")
     if isinstance(shape, int):
         shape = (shape,)
-    if dtype is not None:
-        fill_value = dtype(fill_value)
+    dtype = np.asarray(fill_value).dtype.type if dtype is None else jl_dtypes.jl_to_np_dtype[dtype]
+    if dtype == np.bool_:  # Fails with: Finch currently only supports isbits defaults
+        dtype = bool
 
-    if format == "coo":
+    if format == "coo" and shape != ():
         return Tensor(
-            jl.Tensor(jl.SparseCOO[len(shape)](jl.Element(fill_value)), *shape)
+            jl.Tensor(jl.SparseCOO[len(shape)](jl.Element(dtype(fill_value))), *shape)
         )
-    if format == "dense":
-        return Tensor(np.full(shape, fill_value, dtype=jl_dtypes.jl_to_np_dtype[dtype]))
-    raise ValueError(f"{format} format not supported.")
+    else:  # for dense format or () shape
+        return Tensor(np.full(shape, fill_value, dtype=dtype))
 
 
 def full_like(
@@ -622,24 +660,26 @@ def full_like(
 def ones(
     shape: int | tuple[int, ...], *, dtype: DType | None = None, format: str = "coo"
 ) -> Tensor:
-    return full(shape, jl_dtypes.int64(1), dtype=dtype, format=format)
+    return full(shape, np.float64(1), dtype=dtype, format=format)
 
 
 def ones_like(
     x: Tensor, /, *, dtype: DType | None = None, format: str = "coo"
 ) -> Tensor:
+    dtype = x.dtype if dtype is None else dtype
     return ones(x.shape, dtype=dtype, format=format)
 
 
 def zeros(
     shape: int | tuple[int, ...], *, dtype: DType | None = None, format: str = "coo"
 ) -> Tensor:
-    return full(shape, jl_dtypes.int64(0), dtype=dtype, format=format)
+    return full(shape, np.float64(0), dtype=dtype, format=format)
 
 
 def zeros_like(
     x: Tensor, /, *, dtype: DType | None = None, format: str = "coo"
 ) -> Tensor:
+    dtype = x.dtype if dtype is None else dtype
     return zeros(x.shape, dtype=dtype, format=format)
 
 
@@ -833,6 +873,18 @@ def round(x: Tensor, /) -> Tensor:
     return x._elemwise_op("round")
 
 
+def isnan(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("isnan")
+
+
+def isinf(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("isinf")
+
+
+def isfinite(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("isfinite")
+
+
 def exp(x: Tensor, /) -> Tensor:
     return x._elemwise_op("exp")
 
@@ -897,8 +949,32 @@ def atanh(x: Tensor, /) -> Tensor:
     return x._elemwise_op("atanh")
 
 
-def atan2(x: Tensor, other: Tensor, /) -> Tensor:
-    return x._elemwise_op("atand", other)
+def atan2(x1: Tensor, x2: Tensor, /) -> Tensor:
+    return x1._elemwise_op("atand", x2)
+
+
+def trunc(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("trunc")
+
+
+def square(x: Tensor, /) -> Tensor:
+    return x ** Tensor(2)
+
+
+def logaddexp(x1: Tensor, x2: Tensor, /) -> Tensor:
+    return log(exp(x1) + exp(x2))
+
+
+def logical_and(x1: Tensor, x2: Tensor, /) -> Tensor:
+    return x1._elemwise_op("Finch.and", x2)
+
+
+def logical_or(x1: Tensor, x2: Tensor, /) -> Tensor:
+    return x1._elemwise_op("Finch.or", x2)
+
+
+def logical_xor(x1: Tensor, x2: Tensor, /) -> Tensor:
+    return x1._elemwise_op("Finch.xor", x2)
 
 
 def _is_scipy_sparse_obj(x):

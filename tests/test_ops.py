@@ -59,6 +59,11 @@ def test_lazy_mode(arr3d):
         "expm1",
         "floor",
         "ceil",
+        "isnan",
+        "isfinite",
+        "isinf",
+        "square",
+        "trunc",
     ],
 )
 def test_elemwise_ops_1_arg(arr3d, func_name):
@@ -82,6 +87,24 @@ def test_elemwise_tensor_ops_1_arg(arr3d, meth_name):
     expected = getattr(arr3d, meth_name)()
 
     assert_equal(actual.todense(), expected)
+
+
+@pytest.mark.parametrize(
+    "func_name",
+    ["logaddexp", "logical_and", "logical_or", "logical_xor"],
+)
+def test_elemwise_ops_2_args(arr3d, func_name):
+    arr2d = np.array([[0, 3, 2, 0], [0, 0, 3, 2]])
+    if func_name.startswith("logical"):
+        arr3d = arr3d.astype(bool)
+        arr2d = arr2d.astype(bool)
+    A_finch = finch.Tensor(arr3d)
+    B_finch = finch.Tensor(arr2d)
+
+    actual = getattr(finch, func_name)(A_finch, B_finch)
+    expected = getattr(np, func_name)(arr3d, arr2d)
+
+    assert_allclose(actual.todense(), expected)
 
 
 @pytest.mark.parametrize(

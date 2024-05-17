@@ -15,8 +15,21 @@ from operator import (
     and_ as bitwise_and,
     lshift as bitwise_left_shift,
     rshift as bitwise_right_shift,
+    eq as equal,
+    ne as not_equal,
+    lt as less,
+    le as less_equal,
+    gt as greater,
+    ge as greater_equal,
+    mod as remainder,
 )
-
+from numpy import (
+    e as e,
+    pi as pi,
+    inf as inf,
+    nan as nan,
+    newaxis as newaxis,
+)
 from .levels import (
     Dense,
     Element,
@@ -77,6 +90,16 @@ from .tensor import (
     ones_like,
     zeros,
     zeros_like,
+    isnan,
+    isfinite,
+    isinf,
+    reshape,
+    square,
+    logaddexp,
+    trunc,
+    logical_and,
+    logical_or,
+    logical_xor,
 )
 from .compiled import (
     lazy,
@@ -100,6 +123,9 @@ from .dtypes import (
     complex64,
     complex128,
     bool,
+    finfo,
+    iinfo,
+    can_cast,
 )
 
 __all__ = [
@@ -195,4 +221,31 @@ __all__ = [
     "bitwise_right_shift",
     "bitwise_xor",
     "bitwise_invert",
+    "finfo",
+    "iinfo",
+    "isnan",
+    "isinf",
+    "isfinite",
+    "reshape",
+    "equal",
+    "not_equal",
+    "less",
+    "less_equal",
+    "greater",
+    "greater_equal",
+    "square",
+    "logaddexp",
+    "logical_and",
+    "logical_or",
+    "logical_xor",
+    "trunc",
+    "e",
+    "pi",
+    "inf",
+    "nan",
+    "newaxis",
+    "can_cast",
+    "remainder",
 ]
+
+__array_api_version__: str = "2023.12"

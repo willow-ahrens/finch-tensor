@@ -151,11 +151,11 @@ def test_astype(arr3d, order):
 
     result = finch.astype(arr_finch, finch.int64)
     assert_equal(result.todense(), arr)
-    assert arr_finch != result
+    assert not arr_finch is result
 
     result = finch.astype(arr_finch, finch.int64, copy=False)
     assert_equal(result.todense(), arr)
-    assert arr_finch == result
+    assert arr_finch is result
 
     result = finch.astype(arr_finch, finch.float32)
     assert_equal(result.todense(), arr.astype(np.float32))
@@ -194,6 +194,25 @@ def test_asarray(arr2d, arr3d, order, format):
     else:
         result = finch.asarray(arr_finch, format=format)
         assert_equal(result.todense(), arr)
+
+
+@pytest.mark.parametrize(
+    "arr,new_shape",
+    [
+        (np.arange(10), (2, 5)),
+        (np.ones((10, 10)), (100,)),
+        (np.ones((3, 4, 5)), (5, 2, 2, 3)),
+        (np.arange(1), (1, 1, 1, 1)),
+        (np.zeros((10, 1, 2)), (1, 5, 4, 1)),
+    ],
+)
+@pytest.mark.parametrize("order", ["C", "F"])
+def test_reshape(arr, new_shape, order):
+    arr = np.array(arr, order=order)
+    arr_finch = finch.Tensor(arr)
+
+    res = finch.reshape(arr_finch, new_shape)
+    assert_equal(res.todense(), arr.reshape(new_shape))
 
 
 @pytest.mark.parametrize("shape", [10, (3, 3), (2, 1, 5)])
@@ -283,3 +302,17 @@ def test_eye(dtype_name, k, format):
     expected = np.eye(3, 4, k=k, dtype=getattr(np, dtype_name))
 
     assert_equal(result.todense(), expected)
+
+
+def test_to_scalar():
+    for obj, meth_name in [
+        (True, "__bool__"), (1, "__int__"), (1.0, "__float__"), (1, "__index__"), (1+1j, "__complex__")
+    ]:
+        tns = finch.asarray(np.asarray(obj))
+        assert getattr(tns, meth_name)() == obj
+
+    tns = finch.asarray(np.ones((2, 2)))
+    with pytest.raises(
+        ValueError, match="<class 'int'> can be computed for one-element tensors only."
+    ):
+        tns.__int__()
