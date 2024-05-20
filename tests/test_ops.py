@@ -219,3 +219,12 @@ def test_matmul(arr2d, arr3d):
 
     with pytest.raises(ValueError, match="Both tensors must be 2-dimensional"):
         A_finch @ D_finch
+
+
+def test_negative__mod__():
+    arr = np.array([-1, 0, 0, -2, -3, 0])
+    arr_finch = finch.asarray(arr)
+
+    actual = arr_finch % 5
+    expected = arr % 5
+    assert_equal(actual.todense(), expected)
