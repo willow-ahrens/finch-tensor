@@ -135,7 +135,7 @@ class Tensor(_Display, SparseArray):
         return self._elemwise_op("Finch.fld_nothrow", other)
 
     def __mod__(self, other):
-        return self._elemwise_op("Finch.rem_nothrow", other).__abs__()
+        return self._elemwise_op("Finch.mod_nothrow", other)
 
     def __pow__(self, other):
         return self._elemwise_op("^", other)
@@ -196,7 +196,9 @@ class Tensor(_Display, SparseArray):
                 other = jl.permutedims(other._obj, tuple(range(other.ndim, 0, -1)))
             # inverse swizzle, so `broadcast` appends new dims to the front
             result = jl.broadcast(
-                jl.seval(op), jl.permutedims(self._obj, tuple(range(self.ndim, 0, -1))), other
+                jl.seval(op),
+                jl.permutedims(self._obj, tuple(range(self.ndim, 0, -1))),
+                other,
             )
             # swizzle back to the original order
             result = jl.permutedims(result, tuple(range(jl.ndims(result), 0, -1)))
@@ -611,7 +613,9 @@ def asarray(obj, /, *, dtype=None, format=None):
         return tensor
 
 
-def reshape(x: Tensor, /, shape: tuple[int, ...], *, copy: bool | None = None) -> Tensor:
+def reshape(
+    x: Tensor, /, shape: tuple[int, ...], *, copy: bool | None = None
+) -> Tensor:
     # TODO: https://github.com/willow-ahrens/Finch.jl/issues/558
     #       Only to run array-api-tests that require it for multiple tests.
     #       Must be reimplemented once `reshape` is available in Finch.jl.
@@ -634,7 +638,11 @@ def full(
         raise ValueError(f"{format} format not supported.")
     if isinstance(shape, int):
         shape = (shape,)
-    dtype = np.asarray(fill_value).dtype.type if dtype is None else jl_dtypes.jl_to_np_dtype[dtype]
+    dtype = (
+        np.asarray(fill_value).dtype.type
+        if dtype is None
+        else jl_dtypes.jl_to_np_dtype[dtype]
+    )
     if dtype == np.bool_:  # Fails with: Finch currently only supports isbits defaults
         dtype = bool
 
