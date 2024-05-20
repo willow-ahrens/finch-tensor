@@ -742,7 +742,11 @@ def _reduce(x: Tensor, fn: Callable, axis, dtype=None):
     else:
         result = fn(x._obj)
 
-    if jl.isa(result, jl.Finch.Tensor) or jl.isa(result, jl.Finch.LazyTensor):
+    if (
+        jl.isa(result, jl.Finch.SwizzleArray) or
+        jl.isa(result, jl.Finch.Tensor) or
+        jl.isa(result, jl.Finch.LazyTensor)
+    ):
         result = Tensor(result)
     else:
         result = np.array(result)
