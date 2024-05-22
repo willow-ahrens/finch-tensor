@@ -3,7 +3,7 @@ import os
 import juliapkg
 
 _FINCH_NAME = "Finch"
-_FINCH_VERSION = "0.6.29"
+_FINCH_VERSION = "0.6.30"
 _FINCH_HASH = "9177782c-1635-4eb9-9bfb-d9dfa25e6bce"
 _FINCH_REPO_PATH = os.environ.get("FINCH_REPO_PATH", default=None)
 
