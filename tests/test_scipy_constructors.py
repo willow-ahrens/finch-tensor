@@ -4,6 +4,7 @@ import pytest
 import scipy.sparse as sp
 
 import finch
+from finch.tensor import _eq_scalars
 
 
 def test_scipy_coo(arr2d):
@@ -44,14 +45,29 @@ def test_scipy_compressed2d(arr2d, cls):
         ("csr", sp.csr_matrix, "C"),
     ],
 )
-def test_to_scipy_sparse(format_with_cls_with_order):
+@pytest.mark.parametrize("fill_value_in", [0, finch.inf, finch.nan, 5, None])
+@pytest.mark.parametrize("fill_value_out", [0, finch.inf, finch.nan, 5, None])
+def test_to_scipy_sparse(format_with_cls_with_order, fill_value_in, fill_value_out):
     format, sp_class, order = format_with_cls_with_order
     np_arr = np.random.default_rng(0).random((4, 5))
     np_arr = np.array(np_arr, order=order)
 
-    finch_arr = finch.asarray(np_arr, format=format)
+    finch_arr = finch.asarray(np_arr, format=format, fill_value=fill_value_in)
 
-    actual = finch_arr.to_scipy_sparse()
+    if (
+        not (fill_value_in in {0, None} and fill_value_out in {0, None}) and
+        not _eq_scalars(fill_value_in, fill_value_out)
+    ):
+        match_fill_value_out = 0 if fill_value_out is None else fill_value_out
+        with pytest.raises(
+            ValueError,
+            match=fr"Can only convert arrays with \[{match_fill_value_out}\] fill-values "
+                  "to a Scipy sparse matrix."
+        ):
+            finch_arr.to_scipy_sparse(accept_fv=fill_value_out)
+        return
+
+    actual = finch_arr.to_scipy_sparse(accept_fv=fill_value_out)
 
     assert isinstance(actual, sp_class)
     assert_equal(actual.todense(), np_arr)
@@ -81,12 +97,15 @@ def test_to_scipy_sparse_invalid_input():
         ("dok", "SparseCOO"),
     ],
 )
-def test_from_scipy_sparse(format_with_pattern):
+@pytest.mark.parametrize("fill_value", [0, finch.inf, finch.nan, 5, None])
+def test_from_scipy_sparse(format_with_pattern, fill_value):
     format, pattern = format_with_pattern
     sp_arr = sp.random(10, 5, density=0.1, format=format)
 
-    result = finch.Tensor.from_scipy_sparse(sp_arr)
+    result = finch.Tensor.from_scipy_sparse(sp_arr, fill_value=fill_value)
     assert pattern in str(result)
+    fill_value = 0 if fill_value is None else fill_value
+    assert _eq_scalars(result.fill_value, fill_value)
 
 
 @pytest.mark.parametrize("format", ["coo", "bsr"])

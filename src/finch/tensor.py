@@ -52,7 +52,7 @@ class Tensor(_Display, SparseArray):
         then `N .^ order == strides`. Available options are "C" (row-major), "F" (column-major), or a custom
         order. Default: row-major.
     fill_value : np.number, optional
-        Only used when `arr : np.ndarray` is passed.
+        Only used when `numpy.ndarray` or `scipy.sparse` is passed.
 
     Returns
     -------
@@ -85,13 +85,15 @@ class Tensor(_Display, SparseArray):
         obj: np.ndarray | spmatrix | Storage | JuliaObj,
         /,
         *,
-        fill_value: np.number = 0.0,
+        fill_value: np.number | None = None,
     ):
         if isinstance(obj, (int, float, complex, bool, list)):
             obj = np.array(obj)
+        if fill_value is None:
+            fill_value = 0.0
 
         if _is_scipy_sparse_obj(obj):  # scipy constructor
-            jl_data = self._from_scipy_sparse(obj)
+            jl_data = self._from_scipy_sparse(obj, fill_value=fill_value)
             self._obj = jl_data
         elif isinstance(obj, np.ndarray):  # numpy constructor
             jl_data = self._from_numpy(obj, fill_value=fill_value)
@@ -381,13 +383,13 @@ class Tensor(_Display, SparseArray):
         return jl.swizzle(jl.Tensor(lvl._obj), *order)
 
     @classmethod
-    def from_scipy_sparse(cls, x) -> "Tensor":
+    def from_scipy_sparse(cls, x, fill_value=None) -> "Tensor":
         if not _is_scipy_sparse_obj(x):
             raise ValueError("{x} is not a SciPy sparse object.")
-        return Tensor(x)
+        return Tensor(x, fill_value=fill_value)
 
     @classmethod
-    def _from_scipy_sparse(cls, x) -> JuliaObj:
+    def _from_scipy_sparse(cls, x, fill_value=None) -> JuliaObj:
         if x.format not in ("coo", "csr", "csc"):
             x = x.asformat("coo")
         if not x.has_canonical_format:
@@ -405,16 +407,19 @@ class Tensor(_Display, SparseArray):
                 data=x.data,
                 shape=x.shape[::-1],
                 order=Tensor.row_major,
+                fill_value=fill_value,
             )
         elif x.format == "csc":
             return cls.construct_csc_jl_object(
                 arg=(x.data, x.indices, x.indptr),
                 shape=x.shape,
+                fill_value=fill_value,
             )
         elif x.format == "csr":
             return cls.construct_csr_jl_object(
                 arg=(x.data, x.indices, x.indptr),
                 shape=x.shape,
+                fill_value=fill_value,
             )
         else:
             raise ValueError(f"Unsupported SciPy format: {type(x)}")
@@ -470,25 +475,31 @@ class Tensor(_Display, SparseArray):
 
     @classmethod
     def construct_csc_jl_object(
-        cls, arg: TupleOf3Arrays, shape: tuple[int, ...]
-    ) -> JuliaObj:
-        return cls._construct_compressed2d_jl_object(arg=arg, shape=shape, order=(1, 2))
-
-    @classmethod
-    def construct_csc(cls, arg: TupleOf3Arrays, shape: tuple[int, ...]) -> "Tensor":
-        return Tensor(cls.construct_csc_jl_object(arg, shape))
-
-    @classmethod
-    def construct_csr_jl_object(
-        cls, arg: TupleOf3Arrays, shape: tuple[int, ...]
+        cls, arg: TupleOf3Arrays, shape: tuple[int, ...], fill_value: np.number = 0.0
     ) -> JuliaObj:
         return cls._construct_compressed2d_jl_object(
-            arg=arg, shape=shape[::-1], order=(2, 1)
+            arg=arg, shape=shape, order=(1, 2), fill_value=fill_value
         )
 
     @classmethod
-    def construct_csr(cls, arg: TupleOf3Arrays, shape: tuple[int, ...]) -> "Tensor":
-        return Tensor(cls.construct_csr_jl_object(arg, shape))
+    def construct_csc(
+        cls, arg: TupleOf3Arrays, shape: tuple[int, ...], fill_value: np.number = 0.0
+    ) -> "Tensor":
+        return Tensor(cls.construct_csc_jl_object(arg, shape, fill_value))
+
+    @classmethod
+    def construct_csr_jl_object(
+        cls, arg: TupleOf3Arrays, shape: tuple[int, ...], fill_value: np.number = 0.0
+    ) -> JuliaObj:
+        return cls._construct_compressed2d_jl_object(
+            arg=arg, shape=shape[::-1], order=(2, 1), fill_value=fill_value
+        )
+
+    @classmethod
+    def construct_csr(
+        cls, arg: TupleOf3Arrays, shape: tuple[int, ...], fill_value: np.number = 0.0
+    ) -> "Tensor":
+        return Tensor(cls.construct_csr_jl_object(arg, shape, fill_value))
 
     @staticmethod
     def construct_csf_jl_object(
@@ -515,19 +526,30 @@ class Tensor(_Display, SparseArray):
         return jl_data
 
     @classmethod
-    def construct_csf(cls, arg: TupleOf3Arrays, shape: tuple[int, ...]) -> "Tensor":
-        return Tensor(cls.construct_csf_jl_object(arg, shape))
+    def construct_csf(
+        cls,
+        arg: TupleOf3Arrays,
+        shape: tuple[int, ...],
+        fill_value: np.number = 0.0
+    ) -> "Tensor":
+        return Tensor(cls.construct_csf_jl_object(arg, shape, fill_value))
 
-    def to_scipy_sparse(self):
+    def to_scipy_sparse(self, accept_fv=None):
         import scipy.sparse as sp
+
+        if accept_fv is None:
+            accept_fv = [0]
+        elif not isinstance(accept_fv, Iterable):
+            accept_fv = [accept_fv]
 
         if self.ndim != 2:
             raise ValueError(
                 "Can only convert a 2-dimensional array to a Scipy sparse matrix."
             )
-        if self.fill_value != 0:
+        if not builtins.any(_eq_scalars(self.fill_value, fv) for fv in accept_fv):
             raise ValueError(
-                "Can only convert arrays with 0 fill value to a Scipy sparse matrix."
+                f"Can only convert arrays with {accept_fv} fill-values "
+                "to a Scipy sparse matrix."
             )
         order = self.get_order()
         body = self._obj.body
@@ -581,10 +603,10 @@ def random(shape, density=0.01, random_state=None):
     return Tensor(jl.fsprand(*args))
 
 
-def asarray(obj, /, *, dtype=None, format=None):
+def asarray(obj, /, *, dtype=None, format=None, fill_value=None):
     if format not in {"coo", "csr", "csc", "csf", "dense", None}:
         raise ValueError(f"{format} format not supported.")
-    tensor = obj if isinstance(obj, Tensor) else Tensor(obj)
+    tensor = obj if isinstance(obj, Tensor) else Tensor(obj, fill_value=fill_value)
 
     if format is not None:
         order = tensor.get_order()
@@ -1076,3 +1098,12 @@ def _process_lazy_indexing(key: tuple) -> tuple:
         else:
             raise ValueError(f"Invalid lazy index member: {idx}")
     return new_key
+
+
+def _eq_scalars(x, y):
+    if x is None or y is None:
+        return x == y
+    if jl.isnan(x) or jl.isnan(y):
+        return jl.isnan(x) and jl.isnan(y)
+    else:
+        return x == y
