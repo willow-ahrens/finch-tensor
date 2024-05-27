@@ -18,7 +18,7 @@ from .levels import (
     SparseList,
     sparse_formats_names,
 )
-from .typing import OrderType, JuliaObj, spmatrix, TupleOf3Arrays, DType
+from .typing import OrderType, JuliaObj, spmatrix, TupleOf3Arrays, DType, Device
 
 
 class SparseArray:
@@ -654,7 +654,7 @@ def full(
     *,
     dtype: DType | None = None,
     format: str = "coo",
-    device: Literal["cpu"] | None = None,
+    device: Device = None,
 ) -> Tensor:
     _validate_device(device)
     if not np.isscalar(fill_value):
@@ -686,7 +686,7 @@ def full_like(
     *,
     dtype: DType | None = None,
     format: str = "coo",
-    device: Literal["cpu"] | None = None,
+    device: Device = None,
 ) -> Tensor:
     return full(x.shape, fill_value, dtype=dtype, format=format, device=device)
 
@@ -696,7 +696,7 @@ def ones(
     *,
     dtype: DType | None = None,
     format: str = "coo",
-    device: Literal["cpu"] | None = None,
+    device: Device = None,
 ) -> Tensor:
     return full(shape, np.float64(1), dtype=dtype, format=format, device=device)
 
@@ -707,7 +707,7 @@ def ones_like(
     *,
     dtype: DType | None = None,
     format: str = "coo",
-    device: Literal["cpu"] | None = None,
+    device: Device = None,
 ) -> Tensor:
     dtype = x.dtype if dtype is None else dtype
     return ones(x.shape, dtype=dtype, format=format, device=device)
@@ -718,7 +718,7 @@ def zeros(
     *,
     dtype: DType | None = None,
     format: str = "coo",
-    device: Literal["cpu"] | None = None,
+    device: Device = None,
 ) -> Tensor:
     return full(shape, np.float64(0), dtype=dtype, format=format, device=device)
 
@@ -729,7 +729,7 @@ def zeros_like(
     *,
     dtype: DType | None = None,
     format: str = "coo",
-    device: Literal["cpu"] | None = None,
+    device: Device = None,
 ) -> Tensor:
     dtype = x.dtype if dtype is None else dtype
     return zeros(x.shape, dtype=dtype, format=format, device=device)
@@ -867,7 +867,7 @@ def eye(
     k: int = 0,
     dtype: DType | None = None,
     format: Literal["coo", "dense"] = "coo",
-    device: Literal["cpu"] | None = None,
+    device: Device = None,
 ) -> Tensor:
     _validate_device(device)
     n_cols = n_rows if n_cols is None else n_cols
@@ -1133,7 +1133,7 @@ def _eq_scalars(x, y):
         return x == y
 
 
-def _validate_device(device: Literal["cpu"] | None) -> None:
+def _validate_device(device: Device) -> None:
     if device not in {"cpu", None}:
         raise ValueError(
             "Device not understood. Only \"cpu\" is allowed, "
