@@ -603,9 +603,10 @@ def random(shape, density=0.01, random_state=None):
     return Tensor(jl.fsprand(*args))
 
 
-def asarray(obj, /, *, dtype=None, format=None, fill_value=None):
+def asarray(obj, /, *, dtype=None, format=None, fill_value=None, device=None):
     if format not in {"coo", "csr", "csc", "csf", "dense", None}:
         raise ValueError(f"{format} format not supported.")
+    _validate_device(device)
     tensor = obj if isinstance(obj, Tensor) else Tensor(obj, fill_value=fill_value)
 
     if format is not None:
@@ -653,7 +654,9 @@ def full(
     *,
     dtype: DType | None = None,
     format: str = "coo",
+    device: Literal["cpu"] | None = None,
 ) -> Tensor:
+    _validate_device(device)
     if not np.isscalar(fill_value):
         raise ValueError("`fill_value` must be a scalar")
     if format not in ("coo", "dense"):
@@ -683,34 +686,53 @@ def full_like(
     *,
     dtype: DType | None = None,
     format: str = "coo",
+    device: Literal["cpu"] | None = None,
 ) -> Tensor:
-    return full(x.shape, fill_value, dtype=dtype, format=format)
+    return full(x.shape, fill_value, dtype=dtype, format=format, device=device)
 
 
 def ones(
-    shape: int | tuple[int, ...], *, dtype: DType | None = None, format: str = "coo"
+    shape: int | tuple[int, ...],
+    *,
+    dtype: DType | None = None,
+    format: str = "coo",
+    device: Literal["cpu"] | None = None,
 ) -> Tensor:
-    return full(shape, np.float64(1), dtype=dtype, format=format)
+    return full(shape, np.float64(1), dtype=dtype, format=format, device=device)
 
 
 def ones_like(
-    x: Tensor, /, *, dtype: DType | None = None, format: str = "coo"
+    x: Tensor,
+    /,
+    *,
+    dtype: DType | None = None,
+    format: str = "coo",
+    device: Literal["cpu"] | None = None,
 ) -> Tensor:
     dtype = x.dtype if dtype is None else dtype
-    return ones(x.shape, dtype=dtype, format=format)
+    return ones(x.shape, dtype=dtype, format=format, device=device)
 
 
 def zeros(
-    shape: int | tuple[int, ...], *, dtype: DType | None = None, format: str = "coo"
+    shape: int | tuple[int, ...],
+    *,
+    dtype: DType | None = None,
+    format: str = "coo",
+    device: Literal["cpu"] | None = None,
 ) -> Tensor:
-    return full(shape, np.float64(0), dtype=dtype, format=format)
+    return full(shape, np.float64(0), dtype=dtype, format=format, device=device)
 
 
 def zeros_like(
-    x: Tensor, /, *, dtype: DType | None = None, format: str = "coo"
+    x: Tensor,
+    /,
+    *,
+    dtype: DType | None = None,
+    format: str = "coo",
+    device: Literal["cpu"] | None = None,
 ) -> Tensor:
     dtype = x.dtype if dtype is None else dtype
-    return zeros(x.shape, dtype=dtype, format=format)
+    return zeros(x.shape, dtype=dtype, format=format, device=device)
 
 
 def permute_dims(x: Tensor, axes: tuple[int, ...]):
@@ -845,7 +867,9 @@ def eye(
     k: int = 0,
     dtype: DType | None = None,
     format: Literal["coo", "dense"] = "coo",
+    device: Literal["cpu"] | None = None,
 ) -> Tensor:
+    _validate_device(device)
     n_cols = n_rows if n_cols is None else n_cols
     dtype = jl_dtypes.float64 if dtype is None else dtype
     if format == "coo":
@@ -1107,3 +1131,11 @@ def _eq_scalars(x, y):
         return jl.isnan(x) and jl.isnan(y)
     else:
         return x == y
+
+
+def _validate_device(device: Literal["cpu"] | None) -> None:
+    if device not in {"cpu", None}:
+        raise ValueError(
+            "Device not understood. Only \"cpu\" is allowed, "
+            f"but received: {device}"
+        )
