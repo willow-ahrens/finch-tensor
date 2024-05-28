@@ -13,3 +13,5 @@ JuliaObj = jc.AnyValue
 DType = jc.AnyValue  # represents jl.DataType
 
 spmatrix = Any
+
+Device = Union[Literal["cpu"], None]

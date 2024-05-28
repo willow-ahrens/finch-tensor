@@ -238,6 +238,16 @@ def test_full_ones_zeros(shape, dtype_name, format):
     assert_equal(res.todense(), np.zeros(shape, np_dtype))
 
 
+@pytest.mark.parametrize("func,arg", [(finch.asarray, np.zeros(3)), (finch.zeros, 3)])
+def test_device_keyword(func, arg):
+    func(arg, device="cpu")
+
+    with pytest.raises(
+        ValueError, match="Device not understood. Only \"cpu\" is allowed, but received: cuda"
+    ):
+        func(arg, device="cuda")
+
+
 @pytest.mark.parametrize(
     "order_and_format",
     [("C", None), ("F", None), ("C", "coo"), ("F", "coo"), ("F", "csc")],
