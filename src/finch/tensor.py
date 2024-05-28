@@ -1015,6 +1015,18 @@ def trunc(x: Tensor, /) -> Tensor:
     return x._elemwise_op("trunc")
 
 
+def real(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("real")
+
+
+def imag(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("imag")
+
+
+def conj(x: Tensor, /) -> Tensor:
+    return x._elemwise_op("conj")
+
+
 def square(x: Tensor, /) -> Tensor:
     return x ** Tensor(2)
 

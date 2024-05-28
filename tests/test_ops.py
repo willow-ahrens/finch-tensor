@@ -77,6 +77,21 @@ def test_elemwise_ops_1_arg(arr3d, func_name):
 
 
 @pytest.mark.parametrize(
+    "func_name", ["real", "imag", "conj"]
+)
+@pytest.mark.parametrize("dtype", [np.complex128, np.complex64, np.float64, np.int64])
+def test_elemwise_complex_ops_1_arg(func_name, dtype):
+    arr = np.asarray([[1+1j, 2+2j], [3+3j, 4-4j], [-5-5j, -6-6j]]).astype(dtype)
+    arr_finch = finch.asarray(arr)
+
+    actual = getattr(finch, func_name)(arr_finch)
+    expected = getattr(np, func_name)(arr)
+
+    assert_allclose(actual.todense(), expected)
+    assert actual.todense().dtype == expected.dtype
+
+
+@pytest.mark.parametrize(
     "meth_name",
     ["__pos__", "__neg__", "__abs__", "__invert__"],
 )

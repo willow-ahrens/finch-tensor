@@ -100,6 +100,9 @@ from .tensor import (
     logical_and,
     logical_or,
     logical_xor,
+    real,
+    imag,
+    conj,
 )
 from .compiled import (
     lazy,
@@ -246,6 +249,9 @@ __all__ = [
     "newaxis",
     "can_cast",
     "remainder",
+    "real",
+    "imag",
+    "conj",
 ]
 
 __array_api_version__: str = "2023.12"
