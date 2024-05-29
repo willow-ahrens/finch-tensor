@@ -7,7 +7,7 @@ from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
 
 from . import dtypes as jl_dtypes
 from .errors import PerformanceWarning
-from .julia import jl
+from .julia import jc, jl
 from .levels import (
     _Display,
     Dense,
@@ -338,7 +338,7 @@ class Tensor(_Display, SparseArray):
         else:
             # create materialized dense array
             shape = jl.size(obj)
-            dense_lvls = jl.Element(jl.default(obj))
+            dense_lvls = jl.Element(jc.convert(self.dtype, jl.default(obj)))
             for _ in range(self.ndim):
                 dense_lvls = jl.Dense(dense_lvls)
             dense_tensor = jl.Tensor(dense_lvls, obj).lvl  # materialize
@@ -748,7 +748,7 @@ def astype(x: Tensor, dtype: DType, /, *, copy: bool = True):
     else:
         finch_tns = x._obj.body
         result = jl.copyto_b(
-            jl.similar(finch_tns, jl.default(finch_tns), dtype), finch_tns
+            jl.similar(finch_tns, jc.convert(dtype, jl.default(finch_tns)), dtype), finch_tns
         )
         return Tensor(jl.swizzle(result, *x.get_order(zero_indexing=False)))
 
@@ -785,16 +785,7 @@ def _reduce(x: Tensor, fn: Callable, axis, dtype=None):
         result = fn(x._obj, dims=axis)
     else:
         result = fn(x._obj)
-
-    if (
-        jl.isa(result, jl.Finch.SwizzleArray) or
-        jl.isa(result, jl.Finch.Tensor) or
-        jl.isa(result, jl.Finch.LazyTensor)
-    ):
-        result = Tensor(result)
-    else:
-        result = np.array(result)
-    return result
+    return Tensor(result)
 
 
 def sum(

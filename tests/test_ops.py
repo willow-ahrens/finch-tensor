@@ -167,10 +167,7 @@ def test_reductions(arr3d, func_name, axis, dtype):
     actual = getattr(finch, func_name)(A_finch, axis=axis)
     expected = getattr(np, func_name)(arr3d, axis=axis)
 
-    if isinstance(actual, finch.Tensor):
-        actual = actual.todense()
-
-    assert_equal(actual, expected)
+    assert_equal(actual.todense(), expected)
 
 
 @pytest.mark.parametrize(
