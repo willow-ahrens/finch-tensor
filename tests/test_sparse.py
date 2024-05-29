@@ -142,7 +142,7 @@ def test_permute_dims(arr3d, permutation, order):
 
 @pytest.mark.parametrize("order", ["C", "F"])
 def test_astype(arr3d, order):
-    arr = np.array(arr3d, order=order)
+    arr = np.array(arr3d, order=order, dtype=np.int64)
     storage = finch.Storage(
         finch.Dense(finch.SparseList(finch.SparseList(finch.Element(np.int64(0))))),
         order=order,
@@ -150,15 +150,21 @@ def test_astype(arr3d, order):
     arr_finch = finch.Tensor(arr).to_device(storage)
 
     result = finch.astype(arr_finch, finch.int64)
-    assert_equal(result.todense(), arr)
-    assert not arr_finch is result
+    assert not result is arr_finch
+    result = result.todense()
+    assert_equal(result, arr)
+    assert result.dtype == arr.dtype
 
     result = finch.astype(arr_finch, finch.int64, copy=False)
-    assert_equal(result.todense(), arr)
-    assert arr_finch is result
+    assert result is arr_finch
+    result = result.todense()
+    assert_equal(result, arr)
+    assert result.dtype == arr.dtype
 
-    result = finch.astype(arr_finch, finch.float32)
-    assert_equal(result.todense(), arr.astype(np.float32))
+    result = finch.astype(arr_finch, finch.float32).todense()
+    arr = arr.astype(np.float32)
+    assert_equal(result, arr)
+    assert result.dtype == arr.dtype
 
     with pytest.raises(
         ValueError, match="Unable to avoid a copy while casting in no-copy mode."

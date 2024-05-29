@@ -17,7 +17,7 @@ else:
     ):
         juliapkg.add(_FINCH_NAME, _FINCH_HASH, version=_FINCH_VERSION)
 
-import juliacall  # noqa
+import juliacall as jc  # noqa
 
 juliapkg.resolve()
 from juliacall import Main as jl  # noqa
