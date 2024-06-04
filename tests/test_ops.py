@@ -160,8 +160,6 @@ def test_elemwise_tensor_ops_2_args(arr3d, meth_name):
 @pytest.mark.parametrize("axis", [None, -1, 1, (0, 1), (0, 1, 2)])
 @pytest.mark.parametrize("dtype", [None])  # not supported yet
 def test_reductions(arr3d, func_name, axis, dtype):
-    if func_name in ("any", "all"):
-        arr3d = arr3d.astype(bool)
     A_finch = finch.Tensor(arr3d)
 
     actual = getattr(finch, func_name)(A_finch, axis=axis)
