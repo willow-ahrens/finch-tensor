@@ -837,7 +837,7 @@ def any(
     axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
-    return _reduce(x, jl.any, axis)
+    return _reduce(x != 0, jl.any, axis)
 
 
 def all(
@@ -847,7 +847,7 @@ def all(
     axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
-    return _reduce(x, jl.all, axis)
+    return _reduce(x != 0, jl.all, axis)
 
 
 def eye(
