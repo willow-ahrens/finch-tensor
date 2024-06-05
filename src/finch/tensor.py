@@ -785,7 +785,25 @@ def _reduce(x: Tensor, fn: Callable, axis, dtype=None):
         result = fn(x._obj, dims=axis)
     else:
         result = fn(x._obj)
-    return Tensor(result)
+
+    if np.isscalar(result):
+        result = jl.Tensor(
+            jl.Element(
+                jc.convert(x.dtype, 0),
+                np.array(result, dtype=jl_dtypes.jl_to_np_dtype[x.dtype])
+            )
+        )
+
+    result = Tensor(result)
+    if dtype != "skip":
+        # dtype casting rules for `sum` and `prod`
+        if dtype is not None:
+            result = astype(result, dtype)
+        elif jl.seval(f"{x.dtype} <: Unsigned"):
+            result = astype(result, jl_dtypes.uint)
+        elif jl.seval(f"{x.dtype} <: Signed"):
+            result = astype(result, jl_dtypes.int_)
+    return result
 
 
 def sum(
@@ -817,7 +835,7 @@ def max(
     axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
-    return _reduce(x, jl.maximum, axis)
+    return _reduce(x, jl.maximum, axis, dtype="skip")
 
 
 def min(
@@ -827,7 +845,7 @@ def min(
     axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
-    return _reduce(x, jl.minimum, axis)
+    return _reduce(x, jl.minimum, axis, dtype="skip")
 
 
 def any(
@@ -837,7 +855,7 @@ def any(
     axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
-    return _reduce(x != 0, jl.any, axis)
+    return _reduce(x != 0, jl.any, axis, dtype="skip")
 
 
 def all(
@@ -847,7 +865,7 @@ def all(
     axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
-    return _reduce(x != 0, jl.all, axis)
+    return _reduce(x != 0, jl.all, axis, dtype="skip")
 
 
 def eye(

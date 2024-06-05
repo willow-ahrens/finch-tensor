@@ -158,14 +158,33 @@ def test_elemwise_tensor_ops_2_args(arr3d, meth_name):
 
 @pytest.mark.parametrize("func_name", ["sum", "prod", "max", "min", "any", "all"])
 @pytest.mark.parametrize("axis", [None, -1, 1, (0, 1), (0, 1, 2)])
-@pytest.mark.parametrize("dtype", [None])  # not supported yet
-def test_reductions(arr3d, func_name, axis, dtype):
+def test_reductions(arr3d, func_name, axis):
     A_finch = finch.Tensor(arr3d)
 
     actual = getattr(finch, func_name)(A_finch, axis=axis)
     expected = getattr(np, func_name)(arr3d, axis=axis)
 
     assert_equal(actual.todense(), expected)
+
+
+@pytest.mark.parametrize("func_name", ["sum", "prod"])
+@pytest.mark.parametrize("axis", [None, 0, 1])
+@pytest.mark.parametrize(
+    "in_dtype, dtype, expected_dtype",
+    [
+        (finch.int64, None, np.int64),
+        (finch.int16, None, np.int64),
+        (finch.uint8, None, np.uint64),
+        (finch.int64, finch.float32, np.float32),
+        (finch.float64, finch.complex128, np.complex128),
+    ],
+)
+def test_sum_prod_dtype_arg(arr3d, func_name, axis, in_dtype, dtype, expected_dtype):
+    arr_finch = finch.asarray(np.abs(arr3d), dtype=in_dtype)
+
+    actual = getattr(finch, func_name)(arr_finch, axis=axis, dtype=dtype).todense()
+
+    assert actual.dtype == expected_dtype
 
 
 @pytest.mark.parametrize(
