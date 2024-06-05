@@ -743,14 +743,14 @@ def astype(x: Tensor, dtype: DType, /, *, copy: bool = True):
     if not copy:
         if x.dtype == dtype:
             return x
-        else:
+        if copy is False:
             raise ValueError("Unable to avoid a copy while casting in no-copy mode.")
-    else:
-        finch_tns = x._obj.body
-        result = jl.copyto_b(
-            jl.similar(finch_tns, jc.convert(dtype, jl.default(finch_tns)), dtype), finch_tns
-        )
-        return Tensor(jl.swizzle(result, *x.get_order(zero_indexing=False)))
+
+    finch_tns = x._obj.body
+    result = jl.copyto_b(
+        jl.similar(finch_tns, jc.convert(dtype, jl.default(finch_tns)), dtype), finch_tns
+    )
+    return Tensor(jl.swizzle(result, *x.get_order(zero_indexing=False)))
 
 
 def where(condition: Tensor, x1: Tensor, x2: Tensor, /) -> Tensor:
@@ -796,13 +796,18 @@ def _reduce(x: Tensor, fn: Callable, axis, dtype=None):
 
     result = Tensor(result)
     if dtype != "skip":
+        if jl.isa(result._obj, jl.Finch.LazyTensor):
+            if dtype is not None:
+                raise ValueError(
+                    "`dtype` keyword for `sum` and `prod` in the lazy mode isn't supported"
+                )
         # dtype casting rules for `sum` and `prod`
-        if dtype is not None:
-            result = astype(result, dtype)
+        elif dtype is not None:
+            result = astype(result, dtype, copy=None)
         elif jl.seval(f"{x.dtype} <: Unsigned"):
-            result = astype(result, jl_dtypes.uint)
+            result = astype(result, jl_dtypes.uint, copy=None)
         elif jl.seval(f"{x.dtype} <: Signed"):
-            result = astype(result, jl_dtypes.int_)
+            result = astype(result, jl_dtypes.int_, copy=None)
     return result
 
 
