@@ -778,14 +778,56 @@ def nonzero(x: Tensor, /) -> tuple[np.ndarray, ...]:
     return tuple(Tensor(i[sort_order]) for i in indices)
 
 
-def _reduce(x: Tensor, fn: Callable, axis, dtype=None):
+def _reduce_core(x: Tensor, fn: Callable, axis: int | tuple[int, ...] | None):
     if axis is not None:
         axis = normalize_axis_tuple(axis, x.ndim)
         axis = tuple(i + 1 for i in axis)
         result = fn(x._obj, dims=axis)
     else:
         result = fn(x._obj)
+    return result
 
+
+def _reduce_sum_prod(
+    x: Tensor,
+    fn: Callable,
+    axis: int | tuple[int, ...] | None,
+    dtype: DType | None,
+) -> Tensor:
+    result = _reduce_core(x, fn, axis)
+
+    if np.isscalar(result):
+        if jl.seval(f"{x.dtype} <: Integer"):
+            tmp_dtype = jl_dtypes.int_
+        else:
+            tmp_dtype = x.dtype
+        result = jl.Tensor(
+            jl.Element(
+                jc.convert(tmp_dtype, 0),
+                np.array(result, dtype=jl_dtypes.jl_to_np_dtype[tmp_dtype])
+            )
+        )
+
+    result = Tensor(result)
+
+    if jl.isa(result._obj, jl.Finch.LazyTensor):
+        if dtype is not None:
+            raise ValueError(
+                "`dtype` keyword for `sum` and `prod` in the lazy mode isn't supported"
+            )
+    # dtype casting rules
+    elif dtype is not None:
+        result = astype(result, dtype, copy=None)
+    elif jl.seval(f"{x.dtype} <: Unsigned"):
+        result = astype(result, jl_dtypes.uint, copy=None)
+    elif jl.seval(f"{x.dtype} <: Signed"):
+        result = astype(result, jl_dtypes.int_, copy=None)
+
+    return result
+
+
+def _reduce(x: Tensor, fn: Callable, axis: int | tuple[int, ...] | None):
+    result = _reduce_core(x, fn, axis)
     if np.isscalar(result):
         result = jl.Tensor(
             jl.Element(
@@ -793,22 +835,7 @@ def _reduce(x: Tensor, fn: Callable, axis, dtype=None):
                 np.array(result, dtype=jl_dtypes.jl_to_np_dtype[x.dtype])
             )
         )
-
-    result = Tensor(result)
-    if dtype != "skip":
-        if jl.isa(result._obj, jl.Finch.LazyTensor):
-            if dtype is not None:
-                raise ValueError(
-                    "`dtype` keyword for `sum` and `prod` in the lazy mode isn't supported"
-                )
-        # dtype casting rules for `sum` and `prod`
-        elif dtype is not None:
-            result = astype(result, dtype, copy=None)
-        elif jl.seval(f"{x.dtype} <: Unsigned"):
-            result = astype(result, jl_dtypes.uint, copy=None)
-        elif jl.seval(f"{x.dtype} <: Signed"):
-            result = astype(result, jl_dtypes.int_, copy=None)
-    return result
+    return Tensor(result)
 
 
 def sum(
@@ -819,7 +846,7 @@ def sum(
     dtype: DType | None = None,
     keepdims: bool = False,
 ) -> Tensor:
-    return _reduce(x, jl.sum, axis, dtype)
+    return _reduce_sum_prod(x, jl.sum, axis, dtype)
 
 
 def prod(
@@ -830,7 +857,7 @@ def prod(
     dtype: DType | None = None,
     keepdims: bool = False,
 ) -> Tensor:
-    return _reduce(x, jl.prod, axis, dtype)
+    return _reduce_sum_prod(x, jl.prod, axis, dtype)
 
 
 def max(
@@ -840,7 +867,7 @@ def max(
     axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
-    return _reduce(x, jl.maximum, axis, dtype="skip")
+    return _reduce(x, jl.maximum, axis)
 
 
 def min(
@@ -850,7 +877,7 @@ def min(
     axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
-    return _reduce(x, jl.minimum, axis, dtype="skip")
+    return _reduce(x, jl.minimum, axis)
 
 
 def any(
@@ -860,7 +887,7 @@ def any(
     axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
-    return _reduce(x != 0, jl.any, axis, dtype="skip")
+    return _reduce(x != 0, jl.any, axis)
 
 
 def all(
@@ -870,7 +897,7 @@ def all(
     axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ) -> Tensor:
-    return _reduce(x != 0, jl.all, axis, dtype="skip")
+    return _reduce(x != 0, jl.all, axis)
 
 
 def eye(
