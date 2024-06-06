@@ -53,6 +53,9 @@ class Tensor(_Display, SparseArray):
         order. Default: row-major.
     fill_value : np.number, optional
         Only used when `numpy.ndarray` or `scipy.sparse` is passed.
+    copy : bool, optional
+        If ``True``, then the object is copied. If ``None`` then the object is copied only if needed.
+        For ``False`` it raises a ``ValueError`` if a copy cannot be avoided. Default: ``None``.
 
     Returns
     -------
@@ -86,26 +89,35 @@ class Tensor(_Display, SparseArray):
         /,
         *,
         fill_value: np.number | None = None,
+        copy: bool | None = None,
     ):
         if isinstance(obj, (int, float, complex, bool, list)):
-            obj = np.array(obj)
+            if copy is False:
+                raise ValueError("copy=False isn't supported for scalar inputs and Python lists")
+            obj = np.asarray(obj)
         if fill_value is None:
             fill_value = 0.0
 
         if _is_scipy_sparse_obj(obj):  # scipy constructor
-            jl_data = self._from_scipy_sparse(obj, fill_value=fill_value)
+            jl_data = self._from_scipy_sparse(obj, fill_value=fill_value, copy=copy)
             self._obj = jl_data
         elif isinstance(obj, np.ndarray):  # numpy constructor
-            jl_data = self._from_numpy(obj, fill_value=fill_value)
+            jl_data = self._from_numpy(obj, fill_value=fill_value, copy=copy)
             self._obj = jl_data
         elif isinstance(obj, Storage):  # from-storage constructor
+            if copy:
+                self._raise_julia_copy_not_supported()
             order = self.preprocess_order(
                 obj.order, self.get_lvl_ndim(obj.levels_descr._obj)
             )
             self._obj = jl.swizzle(jl.Tensor(obj.levels_descr._obj), *order)
         elif jl.isa(obj, jl.Finch.Tensor):  # raw-Julia-object constructors
+            if copy:
+                self._raise_julia_copy_not_supported()
             self._obj = jl.swizzle(obj, *tuple(range(1, jl.ndims(obj) + 1)))
         elif jl.isa(obj, jl.Finch.SwizzleArray) or jl.isa(obj, jl.Finch.LazyTensor):
+            if copy:
+                self._raise_julia_copy_not_supported()
             self._obj = obj
         elif isinstance(obj, Tensor):
             self._obj = obj._obj
@@ -283,6 +295,16 @@ class Tensor(_Display, SparseArray):
     def _order(self) -> tuple[int, ...]:
         return jl.typeof(self._obj).parameters[1]
 
+    @property
+    def device(self) -> str:
+        return "cpu"
+
+    def to_device(self, device: Device, /, *, stream: int | Any | None = None) -> "Tensor":
+        if device != "cpu":
+            raise ValueError("Only `device='cpu'` is supported.")
+
+        return self
+
     def is_computed(self) -> bool:
         return not jl.isa(self._obj, jl.Finch.LazyTensor)
 
@@ -368,7 +390,9 @@ class Tensor(_Display, SparseArray):
         )
 
     @classmethod
-    def _from_numpy(cls, arr: np.ndarray, fill_value: np.number) -> JuliaObj:
+    def _from_numpy(cls, arr: np.ndarray, fill_value: np.number, copy: bool | None = None) -> JuliaObj:
+        if copy:
+            arr = arr.copy()
         order_char = "F" if np.isfortran(arr) else "C"
         order = cls.preprocess_order(order_char, arr.ndim)
         inv_order = tuple(i - 1 for i in jl.invperm(order))
@@ -385,21 +409,31 @@ class Tensor(_Display, SparseArray):
         return jl.swizzle(jl.Tensor(lvl._obj), *order)
 
     @classmethod
-    def from_scipy_sparse(cls, x, fill_value=None) -> "Tensor":
+    def from_scipy_sparse(
+        cls,
+        x,
+        fill_value: np.number | None = None,
+        copy: bool | None = None,
+    ) -> "Tensor":
         if not _is_scipy_sparse_obj(x):
             raise ValueError("{x} is not a SciPy sparse object.")
-        return Tensor(x, fill_value=fill_value)
+        return Tensor(x, fill_value=fill_value, copy=copy)
 
     @classmethod
-    def _from_scipy_sparse(cls, x, fill_value=None) -> JuliaObj:
+    def _from_scipy_sparse(
+        cls,
+        x,
+        *,
+        fill_value: np.number | None = None,
+        copy: bool | None = None,
+    ) -> JuliaObj:
+        if copy is False and not (x.format in ("coo", "csr", "csc") and x.has_canonical_format):
+            raise ValueError("Unable to avoid copy while creating an array as requested.")
         if x.format not in ("coo", "csr", "csc"):
             x = x.asformat("coo")
-        if not x.has_canonical_format:
-            warnings.warn(
-                "SciPy sparse input must be in a canonical format. "
-                "Calling `sum_duplicates`."
-            )
+        if copy:
             x = x.copy()
+        if not x.has_canonical_format:
             x.sum_duplicates()
             assert x.has_canonical_format
 
@@ -581,15 +615,9 @@ class Tensor(_Display, SparseArray):
         else:
             raise ValueError("Tensor can't be converted to scipy.sparse object.")
 
-    @property
-    def device(self) -> str:
-        return "cpu"
-
-    def to_device(self, device: Device, /, *, stream: int | Any | None = None) -> "Tensor":
-        if device != "cpu":
-            raise ValueError("Only `device='cpu'` is supported.")
-
-        return self
+    @staticmethod
+    def _raise_julia_copy_not_supported() -> None:
+        raise ValueError("copy=True isn't supported for Julia object inputs")
 
     def __array_namespace__(self, *, api_version: str | None = None) -> Any:
         if api_version is None:
@@ -615,13 +643,23 @@ def random(shape, density=0.01, random_state=None):
     return Tensor(jl.fsprand(*args))
 
 
-def asarray(obj, /, *, dtype=None, format=None, fill_value=None, device=None):
+def asarray(
+    obj,
+    /,
+    *,
+    dtype: DType | None = None,
+    format: str | None = None,
+    fill_value: np.number | None = None,
+    device: Device | None = None,
+    copy: bool | None = None,
+) -> Tensor:
     if format not in {"coo", "csr", "csc", "csf", "dense", None}:
         raise ValueError(f"{format} format not supported.")
     _validate_device(device)
-    tensor = obj if isinstance(obj, Tensor) else Tensor(obj, fill_value=fill_value)
-
+    tensor = obj if isinstance(obj, Tensor) else Tensor(obj, fill_value=fill_value, copy=copy)
     if format is not None:
+        if copy is False:
+            raise ValueError("Unable to avoid copy while creating an array as requested.")
         order = tensor.get_order()
         if format == "coo":
             storage = Storage(SparseCOO(tensor.ndim, Element(tensor.fill_value)), order)
@@ -643,7 +681,7 @@ def asarray(obj, /, *, dtype=None, format=None, fill_value=None, device=None):
         tensor = tensor.to_storage(storage)
 
     if dtype is not None:
-        return astype(tensor, dtype)
+        return astype(tensor, dtype, copy=copy)
     else:
         return tensor
 

@@ -44,14 +44,17 @@ def test_wrappers(dtype, jl_dtype, order):
 
 @pytest.mark.parametrize("dtype", [np.int64, np.float64, np.complex128])
 @pytest.mark.parametrize("order", ["C", "F", None])
-def test_no_copy_fully_dense(dtype, order, arr3d):
+@pytest.mark.parametrize("copy", [True, False, None])
+def test_copy_fully_dense(dtype, order, copy, arr3d):
     arr = np.array(arr3d, dtype=dtype, order=order)
-    arr_finch = finch.Tensor(arr)
+    arr_finch = finch.Tensor(arr, copy=copy)
     arr_todense = arr_finch.todense()
 
     assert_equal(arr_todense, arr)
-    assert np.shares_memory(arr_todense, arr)
-
+    if copy:
+        assert not np.shares_memory(arr_todense, arr)
+    else:
+        assert np.shares_memory(arr_todense, arr)
 
 def test_coo(rng):
     coords = (
