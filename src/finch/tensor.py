@@ -71,7 +71,7 @@ class Tensor(_Display, SparseArray):
     >>> np.shares_memory(t1.todense(), arr2d)
     True
     >>> storage = finch.Storage(finch.Dense(finch.SparseList(finch.Element(1))), order="C")
-    >>> t2 = t1.to_device(storage)
+    >>> t2 = t1.to_storage(storage)
     >>> t2.todense()
     array([[0, 1, 2],
            [3, 4, 5]])
@@ -194,7 +194,9 @@ class Tensor(_Display, SparseArray):
         if other is None:
             result = jl.broadcast(jl.seval(op), self._obj)
         else:
-            if not np.isscalar(other):
+            if np.isscalar(other):
+                other = jc.convert(self.dtype, other)
+            else:
                 other = jl.permutedims(other._obj, tuple(range(other.ndim, 0, -1)))
             # inverse swizzle, so `broadcast` appends new dims to the front
             result = jl.broadcast(
@@ -355,8 +357,8 @@ class Tensor(_Display, SparseArray):
         new_tensor = Tensor(new_obj)
         return new_tensor
 
-    def to_device(self, device: Storage) -> "Tensor":
-        return Tensor(self._from_other_tensor(self, storage=device))
+    def to_storage(self, storage: Storage) -> "Tensor":
+        return Tensor(self._from_other_tensor(self, storage=storage))
 
     @classmethod
     def _from_other_tensor(cls, tensor: "Tensor", storage: Storage | None) -> JuliaObj:
@@ -575,9 +577,19 @@ class Tensor(_Display, SparseArray):
             or jl.typeof(body.lvl.lvl).name.name in sparse_formats_names
         ):
             storage = Storage(SparseCOO(self.ndim, Element(self.fill_value)), order)
-            return self.to_device(storage).to_scipy_sparse()
+            return self.to_storage(storage).to_scipy_sparse()
         else:
             raise ValueError("Tensor can't be converted to scipy.sparse object.")
+
+    @property
+    def device(self) -> str:
+        return "cpu"
+
+    def to_device(self, device: Device, /, *, stream: int | Any | None = None) -> "Tensor":
+        if device != "cpu":
+            raise ValueError("Only `device='cpu'` is supported.")
+
+        return self
 
     def __array_namespace__(self, *, api_version: str | None = None) -> Any:
         if api_version is None:
@@ -628,7 +640,7 @@ def asarray(obj, /, *, dtype=None, format=None, fill_value=None, device=None):
             storage = Storage(Dense(storage), order)
         elif format == "dense":
             storage = DenseStorage(tensor.ndim, tensor.dtype, order)
-        tensor = tensor.to_device(storage)
+        tensor = tensor.to_storage(storage)
 
     if dtype is not None:
         return astype(tensor, dtype)
