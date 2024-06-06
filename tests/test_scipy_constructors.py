@@ -112,9 +112,10 @@ def test_from_scipy_sparse(format_with_pattern, fill_value):
 def test_non_canonical_format(format):
     sp_arr = sp.random(3, 4, density=0.5, format=format)
 
-    with pytest.warns(
-        UserWarning, match="SciPy sparse input must be in a canonical format."
+    with pytest.raises(
+        ValueError, match="Unable to avoid copy while creating an array"
     ):
-        finch_arr = finch.asarray(sp_arr)
+        finch.asarray(sp_arr, copy=False)
 
+    finch_arr = finch.asarray(sp_arr)
     assert_equal(finch_arr.todense(), sp_arr.toarray())

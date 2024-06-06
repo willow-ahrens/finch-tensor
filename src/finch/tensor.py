@@ -1,5 +1,6 @@
 import builtins
 from typing import Any, Callable, Optional, Iterable, Literal
+import warnings
 
 import numpy as np
 from numpy.core.numeric import normalize_axis_index, normalize_axis_tuple
@@ -91,7 +92,9 @@ class Tensor(_Display, SparseArray):
         copy: bool | None = None,
     ):
         if isinstance(obj, (int, float, complex, bool, list)):
-            obj = np.array(obj, copy=copy)
+            if copy is False:
+                raise ValueError("copy=False isn't supported for scalar inputs and Python lists")
+            obj = np.asarray(obj)
         if fill_value is None:
             fill_value = 0.0
 
@@ -424,12 +427,12 @@ class Tensor(_Display, SparseArray):
         fill_value: np.number | None = None,
         copy: bool | None = None,
     ) -> JuliaObj:
-        if copy is False and not (x.has_canonical_format and x.format in ("coo", "csr", "csc")):
+        if copy is False and not (x.format in ("coo", "csr", "csc") and x.has_canonical_format):
             raise ValueError("Unable to avoid copy while creating an array as requested.")
-        if copy or not x.has_canonical_format:
-            x = x.copy()
         if x.format not in ("coo", "csr", "csc"):
             x = x.asformat("coo")
+        if copy:
+            x = x.copy()
         if not x.has_canonical_format:
             x.sum_duplicates()
             assert x.has_canonical_format
