@@ -98,7 +98,7 @@ def test_indexing_2d(arr2d, index, order):
 def test_indexing_3d(arr3d, index, levels_descr, order):
     arr = np.array(arr3d, order=order)
     storage = finch.Storage(levels_descr, order=order)
-    arr_finch = finch.Tensor(arr).to_device(storage)
+    arr_finch = finch.Tensor(arr).to_storage(storage)
 
     actual = arr_finch[index]
     expected = arr[index]

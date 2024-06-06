@@ -25,7 +25,7 @@ def test_wrappers(dtype, jl_dtype, order):
         finch.Dense(finch.SparseList(finch.SparseList(finch.Element(dtype(0.0))))),
         order=order,
     )
-    B_finch = B_finch.to_device(storage)
+    B_finch = B_finch.to_storage(storage)
 
     assert B_finch.shape == B.shape
     assert B_finch.dtype == jl_dtype
@@ -34,7 +34,7 @@ def test_wrappers(dtype, jl_dtype, order):
     storage = finch.Storage(
         finch.Dense(finch.Dense(finch.Element(dtype(1.0)))), order=order
     )
-    A_finch = finch.Tensor(A).to_device(storage)
+    A_finch = finch.Tensor(A).to_storage(storage)
 
     assert A_finch.shape == A.shape
     assert A_finch.dtype == jl_dtype
@@ -119,7 +119,7 @@ def test_permute_dims(arr3d, permutation, order):
         finch.Dense(finch.SparseList(finch.SparseList(finch.Element(0)))), order=order
     )
 
-    arr_finch = finch.Tensor(arr).to_device(storage)
+    arr_finch = finch.Tensor(arr).to_storage(storage)
 
     actual_eager_mode = finch.permute_dims(arr_finch, permutation)
     actual_lazy_mode = finch.compute(
@@ -147,7 +147,7 @@ def test_astype(arr3d, order):
         finch.Dense(finch.SparseList(finch.SparseList(finch.Element(np.int64(0))))),
         order=order,
     )
-    arr_finch = finch.Tensor(arr).to_device(storage)
+    arr_finch = finch.Tensor(arr).to_storage(storage)
 
     result = finch.astype(arr_finch, finch.int64)
     assert not result is arr_finch

@@ -210,9 +210,9 @@ def test_tensordot(arr3d, storage):
     B_finch = finch.Tensor(arr2d)
     C_finch = finch.Tensor(arr3d)
     if storage is not None:
-        A_finch = A_finch.to_device(storage[0])
-        B_finch = B_finch.to_device(storage[1])
-        C_finch = C_finch.to_device(storage[2])
+        A_finch = A_finch.to_storage(storage[0])
+        B_finch = B_finch.to_storage(storage[1])
+        C_finch = C_finch.to_storage(storage[2])
 
     actual = finch.tensordot(B_finch, B_finch)
     expected = np.tensordot(arr2d, arr2d)
