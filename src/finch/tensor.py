@@ -985,6 +985,10 @@ def eye(
 
 
 def tensordot(x1: Tensor, x2: Tensor, /, *, axes=2) -> Tensor:
+    if not isinstance(x1, Tensor):
+        x1 = Tensor(x1)
+    if not isinstance(x2, Tensor):
+        x2 = Tensor(x2)
     if isinstance(axes, Iterable):
         self_axes = normalize_axis_tuple(axes[0], x1.ndim)
         other_axes = normalize_axis_tuple(axes[1], x2.ndim)
