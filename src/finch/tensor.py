@@ -85,7 +85,7 @@ class Tensor(_Display, SparseArray):
 
     def __init__(
         self,
-        obj: np.ndarray | spmatrix | Storage | JuliaObj | "Tensor",
+        obj: np.ndarray | spmatrix | Storage | JuliaObj,
         /,
         *,
         fill_value: np.number | None = None,
