@@ -13,13 +13,11 @@ def test_read(arr2d):
     assert_equal(tns.todense(), arr2d)
 
 
-def test_write(arr2d):
+def test_write(tmp_path, arr2d):
     tns = finch.asarray(arr2d)
-    finch.write(f"{base_path}/tmp.ttx", tns)
+    finch.write(tmp_path / "tmp.ttx", tns)
 
     expected = open(f"{base_path}/matrix_1.ttx").read()
-    actual = open(f"{base_path}/tmp.ttx").read()
+    actual = open(tmp_path / "tmp.ttx").read()
 
     assert actual == expected
-
-    os.remove(f"{base_path}/tmp.ttx")

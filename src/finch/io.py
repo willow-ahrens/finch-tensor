@@ -1,11 +1,13 @@
+from pathlib import Path
+
 from .julia import jl
 from .tensor import Tensor
 
 
-def read(filename: str) -> Tensor:
-    julia_obj = jl.fread(filename)
+def read(filename: Path | str) -> Tensor:
+    julia_obj = jl.fread(str(filename))
     return Tensor(julia_obj)
 
 
-def write(filename: str, tns: Tensor) -> None:
-    jl.fwrite(filename, tns._obj)
+def write(filename: Path | str, tns: Tensor) -> None:
+    jl.fwrite(str(filename), tns._obj)
