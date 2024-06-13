@@ -30,3 +30,4 @@ from juliacall import Main as jl  # noqa
 
 jl.seval("using Finch")
 jl.seval("using Random")
+jl.seval("using TensorMarket")
