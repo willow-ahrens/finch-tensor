@@ -2,6 +2,14 @@ import os
 
 import juliapkg
 
+
+def add_package(name: str, hash: str, version: str) -> None:
+    deps = juliapkg.deps.load_cur_deps()
+    if (deps.get("packages", {}).get(name, {}).get("version", None) != version):
+        juliapkg.add(name, hash, version=version)
+        juliapkg.resolve()
+
+
 _FINCH_NAME = "Finch"
 _FINCH_VERSION = "0.6.31"
 _FINCH_HASH = "9177782c-1635-4eb9-9bfb-d9dfa25e6bce"
@@ -16,12 +24,7 @@ if _FINCH_REPO_PATH:  # Also account for empty string
 elif _FINCH_REPO_URL:
     juliapkg.add(_FINCH_NAME, _FINCH_HASH, url=_FINCH_REPO_URL, dev=True)
 else:
-    deps = juliapkg.deps.load_cur_deps()
-    if (
-        deps.get("packages", {}).get(_FINCH_NAME, {}).get("version", None)
-        != _FINCH_VERSION
-    ):
-        juliapkg.add(_FINCH_NAME, _FINCH_HASH, version=_FINCH_VERSION)
+    add_package(_FINCH_NAME, _FINCH_HASH, _FINCH_VERSION)
 
 import juliacall as jc  # noqa
 

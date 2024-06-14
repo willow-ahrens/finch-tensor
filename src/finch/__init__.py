@@ -130,6 +130,10 @@ from .dtypes import (
     iinfo,
     can_cast,
 )
+from .io import (
+    read,
+    write,
+)
 
 __all__ = [
     "Tensor",
@@ -252,6 +256,8 @@ __all__ = [
     "real",
     "imag",
     "conj",
+    "read",
+    "write",
 ]
 
 __array_api_version__: str = "2023.12"
