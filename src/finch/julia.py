@@ -7,6 +7,7 @@ def add_package(name: str, hash: str, version: str) -> None:
     deps = juliapkg.deps.load_cur_deps()
     if (deps.get("packages", {}).get(name, {}).get("version", None) != version):
         juliapkg.add(name, hash, version=version)
+        juliapkg.resolve()
 
 
 _FINCH_NAME = "Finch"
