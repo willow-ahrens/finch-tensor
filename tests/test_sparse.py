@@ -227,7 +227,7 @@ def test_reshape(arr, new_shape, order):
 @pytest.mark.parametrize("shape", [10, (3, 3), (2, 1, 5)])
 @pytest.mark.parametrize("dtype_name", [None, "int64", "float64"])
 @pytest.mark.parametrize("format", ["coo", "dense"])
-def test_full_ones_zeros(shape, dtype_name, format):
+def test_full_ones_zeros_empty(shape, dtype_name, format):
     jl_dtype = getattr(finch, dtype_name) if dtype_name is not None else None
     np_dtype = getattr(np, dtype_name) if dtype_name is not None else None
 
@@ -245,6 +245,11 @@ def test_full_ones_zeros(shape, dtype_name, format):
     assert_equal(res.todense(), np.zeros(shape, np_dtype))
     res = finch.zeros_like(res, dtype=jl_dtype, format=format)
     assert_equal(res.todense(), np.zeros(shape, np_dtype))
+
+    res = finch.empty(shape, dtype=jl_dtype, format=format)
+    assert_equal(res.todense(), np.empty(shape, np_dtype))
+    res = finch.empty_like(res, dtype=jl_dtype, format=format)
+    assert_equal(res.todense(), np.empty(shape, np_dtype))
 
 
 @pytest.mark.parametrize("func,arg", [(finch.asarray, np.zeros(3)), (finch.zeros, 3)])
@@ -335,3 +340,20 @@ def test_to_scalar():
         ValueError, match="<class 'int'> can be computed for one-element tensors only."
     ):
         tns.__int__()
+
+
+@pytest.mark.parametrize("dtype_name", [None, "int16", "float64"])
+def test_arange_linspace(dtype_name):
+    if dtype_name is not None:
+        finch_dtype = getattr(finch, dtype_name)
+        np_dtype = getattr(np, dtype_name)
+    else:
+        finch_dtype = np_dtype = None
+
+    result = finch.arange(10, 100, 5, dtype=finch_dtype)
+    expected = np.arange(10, 100, 5, dtype=np_dtype)
+    assert_equal(result.todense(), expected)
+
+    result = finch.linspace(20, 80, 10, dtype=finch_dtype)
+    expected = np.linspace(20, 80, 10, dtype=np_dtype)
+    assert_equal(result.todense(), expected)

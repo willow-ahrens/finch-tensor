@@ -785,6 +785,57 @@ def zeros_like(
     return zeros(x.shape, dtype=dtype, format=format, device=device)
 
 
+def empty(
+    shape: int | tuple[int, ...],
+    *,
+    dtype: DType | None = None,
+    format: str = "coo",
+    device: Device = None,
+) -> Tensor:
+    return full(shape, np.float64(0), dtype=dtype, format=format, device=device)
+
+
+def empty_like(
+    x: Tensor,
+    /,
+    *,
+    dtype: DType | None = None,
+    format: str = "coo",
+    device: Device = None,
+) -> Tensor:
+    dtype = x.dtype if dtype is None else dtype
+    return empty(x.shape, dtype=dtype, format=format, device=device)
+
+
+def arange(
+    start: int | float,
+    /,
+    stop: int | float | None = None,
+    step: int | float = 1,
+    *,
+    dtype: DType | None = None,
+    device: Device = None
+) -> Tensor:
+    _validate_device(device)
+    return Tensor(np.arange(start, stop, step, jl_dtypes.jl_to_np_dtype[dtype]))
+
+
+def linspace(
+    start: int | float | complex,
+    stop: int | float | complex,
+    /,
+    num: int,
+    *,
+    dtype: DType | None = None,
+    device: Device = None,
+    endpoint: bool = True,
+) -> Tensor:
+    _validate_device(device)
+    return Tensor(
+        np.linspace(start, stop, num=num, dtype=jl_dtypes.jl_to_np_dtype[dtype], endpoint=endpoint)
+    )
+
+
 def permute_dims(x: Tensor, axes: tuple[int, ...]):
     return x.permute_dims(axes)
 

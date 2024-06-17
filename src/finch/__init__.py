@@ -103,6 +103,10 @@ from .tensor import (
     real,
     imag,
     conj,
+    empty,
+    empty_like,
+    arange,
+    linspace,
 )
 from .compiled import (
     lazy,
@@ -258,6 +262,10 @@ __all__ = [
     "conj",
     "read",
     "write",
+    "empty",
+    "empty_like",
+    "arange",
+    "linspace",
 ]
 
 __array_api_version__: str = "2023.12"
