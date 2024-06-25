@@ -388,7 +388,7 @@ class Tensor(_Display, SparseArray):
         result = jl.copyto_b(
             jl.swizzle(jl.Tensor(storage.levels_descr._obj), *order), tensor._obj
         )
-        return jl.dropfills(result)
+        return jl.dropfills(result) if tensor._is_dense else result
 
     @classmethod
     def _from_numpy(cls, arr: np.ndarray, fill_value: np.number, copy: bool | None = None) -> JuliaObj:
