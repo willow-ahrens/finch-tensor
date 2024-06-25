@@ -383,11 +383,12 @@ class Tensor(_Display, SparseArray):
         return Tensor(self._from_other_tensor(self, storage=storage))
 
     @classmethod
-    def _from_other_tensor(cls, tensor: "Tensor", storage: Storage | None) -> JuliaObj:
+    def _from_other_tensor(cls, tensor: "Tensor", storage: Storage) -> JuliaObj:
         order = cls.preprocess_order(storage.order, tensor.ndim)
-        return jl.swizzle(
-            jl.Tensor(storage.levels_descr._obj, tensor._obj.body), *order
+        result = jl.copyto_b(
+            jl.swizzle(jl.Tensor(storage.levels_descr._obj), *order), tensor._obj
         )
+        return jl.dropfills(result) if tensor._is_dense else result
 
     @classmethod
     def _from_numpy(cls, arr: np.ndarray, fill_value: np.number, copy: bool | None = None) -> JuliaObj:
@@ -664,12 +665,8 @@ def asarray(
         if format == "coo":
             storage = Storage(SparseCOO(tensor.ndim, Element(tensor.fill_value)), order)
         elif format == "csr":
-            if order != (1, 0):
-                raise ValueError("Invalid order for csr")
             storage = Storage(Dense(SparseList(Element(tensor.fill_value))), (2, 1))
         elif format == "csc":
-            if order != (0, 1):
-                raise ValueError("Invalid order for csc")
             storage = Storage(Dense(SparseList(Element(tensor.fill_value))), (1, 2))
         elif format == "csf":
             storage = Element(tensor.fill_value)
